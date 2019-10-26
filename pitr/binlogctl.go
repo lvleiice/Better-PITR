@@ -100,10 +100,6 @@ func OpenMyBinlogger(dirpath string) (*myBinlogger, error) {
 	return binlog, nil
 }
 
-func CloseMyBinlogger(b *myBinlogger) error {
-	return b.Close()
-}
-
 func (b *myBinlogger) WriteTail(entity *binlog.Entity) (int64, error) {
 	payload := entity.Payload
 

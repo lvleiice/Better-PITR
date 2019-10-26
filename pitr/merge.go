@@ -496,8 +496,6 @@ func (tm *TableMerge) HandleEvent(row *Event) {
 	}
 }
 
-// parserSchemaTableFromDDL parses ddl query to get schema and table
-// ddl like `use test; create table`
 func rewriteDDL(binlog *pb.Binlog) (*pb.Binlog, error) {
 	var ddl []byte
 	stmts, _, err := parser.New().Parse(string(binlog.DdlQuery), "", "")

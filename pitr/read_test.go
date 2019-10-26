@@ -91,5 +91,4 @@ func (s *testReadSuite) TestReader(c *check.C) {
 			c.Assert(len(readBackBinlogs), check.Equals, end-start+1)
 		}
 	}
-
 }

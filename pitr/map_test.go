@@ -52,7 +52,6 @@ func TestPbFile(t *testing.T) {
 	assert.Assert(t, len(files) == 3)
 
 	os.RemoveAll(dirPath + "/")
-
 }
 
 func TestPbFileDDL(t *testing.T) {
