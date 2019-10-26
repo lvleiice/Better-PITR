@@ -63,7 +63,7 @@ func (r *PITR) Process() error {
 		return errors.Trace(err)
 	}
 
-	defer merge.Close()
+	defer merge.Close(r.cfg.reserveTempDir)
 
 	if err := merge.Map(); err != nil {
 		return errors.Trace(err)

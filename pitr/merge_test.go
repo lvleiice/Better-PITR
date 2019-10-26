@@ -101,7 +101,7 @@ func TestMapFunc1(t *testing.T) {
 	assert.Assert(t, strings.EqualFold(string(log.DdlQuery), "DROP TABLE tb1;USE `test`;SHOW TABLES;"))
 	merge.ddlHandle.ExecuteDDL(sql)
 
-	merge.Close()
+	merge.Close(false)
 	merge.ddlHandle.Close()
 	os.RemoveAll(dstPath + "/")
 	os.RemoveAll(srcPath + "/")
