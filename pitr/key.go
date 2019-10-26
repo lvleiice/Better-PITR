@@ -122,7 +122,7 @@ func formatValue(value types.Datum, tp byte) types.Datum {
 	return value
 }
 
-func getHashKey(schema, table string, ev pb.Event) (string, error) {
+func getHashKey(schema, table string, ev *pb.Event) (string, error) {
 	tableInfo, err := ddlHandle.GetTableInfo(schema, table)
 	if err != nil {
 		return "", err
@@ -134,41 +134,6 @@ func getHashKey(schema, table string, ev pb.Event) (string, error) {
 		if err != nil {
 			return "", err
 		}
-	case pb.EventType_Update:
-		//var cKey string
-		//var sKey string
-		key, _, _, err = getUpdateRowKey(ev.GetRow(), tableInfo)
-		if err != nil {
-			return "", err
-		}
-
-		if len(tableInfo.uniqueKeys) == 0 {
-			break
-		}
-
-		/*
-			sKey, err = ddlHandle.fetchMapKeyFromDB(key)
-			if err != nil {
-				return "", nil
-			}
-			if sKey != "" {
-				key = sKey
-			}
-
-			if cKey != key {
-				sKey, err = ddlHandle.fetchMapKeyFromDB(cKey)
-				if err != nil {
-					return "", err
-				}
-
-				if sKey == "" {
-					err = ddlHandle.insertMapKeyFromDB(cKey, key)
-					if err != nil {
-						return "", err
-					}
-				}
-			}
-		*/
 	default:
 		panic("unreachable")
 	}

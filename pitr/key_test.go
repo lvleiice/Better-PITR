@@ -14,6 +14,7 @@ func TestGetHashKey(t *testing.T) {
 	os.RemoveAll(defaultTiDBDir)
 	ddl, err := NewDDLHandle(nil)
 	assert.Assert(t, err == nil)
+	ddlHandle = ddl
 	ddl.ResetDB()
 
 	err = ddl.createMapTable()
@@ -27,15 +28,15 @@ func TestGetHashKey(t *testing.T) {
 	assert.Assert(t, err == nil)
 	err = ddl.ExecuteDDL("use test5; create table tb1 (a int unique, b int)")
 	assert.Assert(t, err == nil)
-	key, err := getHashKey(schema, table, evs[0], ddl)
+	key, err := getHashKey(schema, table, evs[0])
 	assert.Assert(t, err == nil)
 	assert.Assert(t, strings.EqualFold("test5|tb1|1|", key))
 
-	key, err = getHashKey(schema, table, evs[1], ddl)
+	key, err = getHashKey(schema, table, evs[1])
 	assert.Assert(t, err == nil)
 	assert.Assert(t, strings.EqualFold("test5|tb1|1|", key))
 
-	key, err = getHashKey(schema, table, evs[2], ddl)
+	key, err = getHashKey(schema, table, evs[2])
 	assert.Assert(t, err == nil)
 	assert.Assert(t, strings.EqualFold("test5|tb1|1|", key))
 
@@ -45,15 +46,15 @@ func TestGetHashKey(t *testing.T) {
 	assert.Assert(t, err == nil)
 	err = ddl.ExecuteDDL("use test5; create table tb2 (a int, b int)")
 	assert.Assert(t, err == nil)
-	key, err = getHashKey(schema, table, evs[0], ddl)
+	key, err = getHashKey(schema, table, evs[0])
 	assert.Assert(t, err == nil)
 	assert.Assert(t, strings.EqualFold("test5|tb2|1|1|", key))
 
-	key, err = getHashKey(schema, table, evs[1], ddl)
+	key, err = getHashKey(schema, table, evs[1])
 	assert.Assert(t, err == nil)
 	assert.Assert(t, strings.EqualFold("test5|tb2|2|2|", key))
 
-	key, err = getHashKey(schema, table, evs[2], ddl)
+	key, err = getHashKey(schema, table, evs[2])
 	assert.Assert(t, err == nil)
 	assert.Assert(t, strings.EqualFold("test5|tb2|3|3|", key))
 
@@ -63,15 +64,15 @@ func TestGetHashKey(t *testing.T) {
 	assert.Assert(t, err == nil)
 	err = ddl.ExecuteDDL("use test5; create table tb3 (a int primary key, b int)")
 	assert.Assert(t, err == nil)
-	key, err = getHashKey(schema, table, evs[0], ddl)
+	key, err = getHashKey(schema, table, evs[0])
 	assert.Assert(t, err == nil)
 	assert.Assert(t, strings.EqualFold("test5|tb3|1|", key))
 
-	key, err = getHashKey(schema, table, evs[1], ddl)
+	key, err = getHashKey(schema, table, evs[1])
 	assert.Assert(t, err == nil)
 	assert.Assert(t, strings.EqualFold("test5|tb3|2|", key))
 
-	key, err = getHashKey(schema, table, evs[2], ddl)
+	key, err = getHashKey(schema, table, evs[2])
 	assert.Assert(t, err == nil)
 	assert.Assert(t, strings.EqualFold("test5|tb3|3|", key))
 
@@ -80,15 +81,15 @@ func TestGetHashKey(t *testing.T) {
 	assert.Assert(t, err == nil)
 	err = ddl.ExecuteDDL("use test5; create table tb4 (a int, b int)")
 	assert.Assert(t, err == nil)
-	key, err = getHashKey(schema, table, evs[0], ddl)
+	key, err = getHashKey(schema, table, evs[0])
 	assert.Assert(t, err == nil)
 	assert.Assert(t, strings.EqualFold("test5|tb4|1|1|", key))
 
-	key, err = getHashKey(schema, table, evs[1], ddl)
+	key, err = getHashKey(schema, table, evs[1])
 	assert.Assert(t, err == nil)
 	assert.Assert(t, strings.EqualFold("test5|tb4|2|2|", key))
 
-	key, err = getHashKey(schema, table, evs[2], ddl)
+	key, err = getHashKey(schema, table, evs[2])
 	assert.Assert(t, err == nil)
 	assert.Assert(t, strings.EqualFold("test5|tb4|3|3|", key))
 
@@ -98,15 +99,15 @@ func TestGetHashKey(t *testing.T) {
 	assert.Assert(t, err == nil)
 	err = ddl.ExecuteDDL("use test5; create table tb5 (a int, b int)")
 	assert.Assert(t, err == nil)
-	key, err = getHashKey(schema, table, evs[0], ddl)
+	key, err = getHashKey(schema, table, evs[0])
 	assert.Assert(t, err == nil)
 	assert.Assert(t, strings.EqualFold("test5|tb5|1|1|", key))
 
-	key, err = getHashKey(schema, table, evs[1], ddl)
+	key, err = getHashKey(schema, table, evs[1])
 	assert.Assert(t, err == nil)
 	assert.Assert(t, strings.EqualFold("test5|tb5|2|2|", key))
 
-	key, err = getHashKey(schema, table, evs[2], ddl)
+	key, err = getHashKey(schema, table, evs[2])
 	assert.Assert(t, err == nil)
 	assert.Assert(t, strings.EqualFold("test5|tb5|3|3|", key))
 
@@ -115,15 +116,15 @@ func TestGetHashKey(t *testing.T) {
 	assert.Assert(t, err == nil)
 	err = ddl.ExecuteDDL("use test5; create table tb6 (a int primary key, b int)")
 	assert.Assert(t, err == nil)
-	key, err = getHashKey(schema, table, evs[0], ddl)
+	key, err = getHashKey(schema, table, evs[0])
 	assert.Assert(t, err == nil)
 	assert.Assert(t, strings.EqualFold("test5|tb6|1|", key))
 
-	key, err = getHashKey(schema, table, evs[1], ddl)
+	key, err = getHashKey(schema, table, evs[1])
 	assert.Assert(t, err == nil)
 	assert.Assert(t, strings.EqualFold("test5|tb6|2|", key))
 
-	key, err = getHashKey(schema, table, evs[2], ddl)
+	key, err = getHashKey(schema, table, evs[2])
 	assert.Assert(t, err == nil)
 	assert.Assert(t, strings.EqualFold("test5|tb6|3|", key))
 }

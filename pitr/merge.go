@@ -21,7 +21,11 @@ import (
 	"go.uber.org/zap"
 )
 
-const maxMemorySize int64 = 2 * 1024 * 1024 * 1024 // 2G
+const (
+	maxMemorySize  int64 = 2 * 1024 * 1024 * 1024 // 2G
+	beforeImageRow byte  = 0x1
+	afterImageRow  byte  = 0x2
+)
 
 var (
 	defaultTempDir   string = "./temp"
@@ -117,13 +121,19 @@ func (m *Merge) Map() error {
 					} else {
 						pf = fileMap[key]
 					}
-
-					var hk string
-					hk, err = getHashKey(schema, table, event)
+					var evs []*pb.Event
+					evs, err = rewriteDML(&event)
 					if err != nil {
 						return err
 					}
-					pf.AddDMLEvent(event, binlog.CommitTs, hk)
+					for _, v := range evs {
+						var hk string
+						hk, err = getHashKey(schema, table, v)
+						if err != nil {
+							return err
+						}
+						pf.AddDMLEvent(event, binlog.CommitTs, hk)
+					}
 				}
 			case pb.BinlogType_DDL:
 				schema, table, err = parserSchemaTableFromDDL(string(binlog.DdlQuery))
@@ -525,4 +535,74 @@ func newDMLBinlog(commitTS int64) *pb.Binlog {
 			Events: make([]pb.Event, 0, 1000),
 		},
 	}
+}
+
+func rewriteDML(ev *pb.Event) ([]*pb.Event, error) {
+	var res []*pb.Event
+	switch ev.GetTp() {
+	case pb.EventType_Insert, pb.EventType_Delete:
+		res = append(res, ev)
+	case pb.EventType_Update:
+		c, err := getImageRow(ev.GetRow(), beforeImageRow)
+		if err != nil {
+			return nil, err
+		}
+		del := &pb.Event{
+			SchemaName: ev.SchemaName,
+			TableName:  ev.TableName,
+			Tp:         pb.EventType_Delete,
+			Row:        c,
+		}
+		res = append(res, del)
+
+		c, err = getImageRow(ev.GetRow(), afterImageRow)
+		if err != nil {
+			return nil, err
+		}
+		ins := &pb.Event{
+			SchemaName: ev.SchemaName,
+			TableName:  ev.TableName,
+			Tp:         pb.EventType_Insert,
+			Row:        c,
+		}
+		res = append(res, ins)
+	default:
+		panic("unreachable")
+	}
+	return res, nil
+}
+
+func getImageRow(row [][]byte, t byte) ([][]byte, error) {
+	var allColBytes [][]byte
+	var bt []byte
+	var err error
+	for _, c := range row {
+		col := &pb.Column{}
+		err = col.Unmarshal(c)
+		if err != nil {
+			return nil, nil
+		}
+		var column *pb.Column
+		if t == beforeImageRow {
+			column = &pb.Column{
+				Name:      col.Name,
+				Tp:        col.Tp,
+				MysqlType: col.MysqlType,
+				Value:     col.Value,
+			}
+		} else {
+			column = &pb.Column{
+				Name:      col.Name,
+				Tp:        col.Tp,
+				MysqlType: col.MysqlType,
+				Value:     col.ChangedValue,
+			}
+		}
+		bt, err = column.Marshal()
+		if err != nil {
+			return nil, err
+		}
+		allColBytes = append(allColBytes, bt)
+	}
+	return allColBytes, nil
 }
