@@ -55,7 +55,7 @@ func (f *PBFile) AddDMLEvent(ev pb.Event, commitTS int64, key string) error {
 	f.dml[h].DmlData.Events = append(f.dml[h].DmlData.Events, ev)
 	f.dml[h].CommitTs = mathutil.MaxInt64Val(f.dml[h].CommitTs, commitTS)
 	if len(f.dml[h].DmlData.Events) >= Max_Event_Num {
-		return f.flushDML(h, true)
+		return f.flushDML(h, false)
 	}
 	return nil
 }
@@ -67,7 +67,7 @@ func (f *PBFile) AddDDLEvent(binlog *pb.Binlog) error {
 	}
 	f.ddl = append(f.ddl, binlog)
 	if len(f.ddl) >= Max_Event_Num {
-		return f.flushDDL(true)
+		return f.flushDDL(false)
 	}
 	return nil
 }
