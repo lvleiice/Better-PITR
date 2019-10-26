@@ -48,9 +48,12 @@ func (r *PITR) Process() error {
 		return errors.Annotate(err, "filterFiles failed")
 	}
 
-	firstBinlogTs, _, err := getFirstBinlogCommitTSAndFileSize(files[0])
-	if err != nil {
-		return errors.Annotate(err, "get first binlog commit ts failed")
+	firstBinlogTs := r.cfg.StartTSO
+	if firstBinlogTs == 0 {
+		firstBinlogTs, _, err = getFirstBinlogCommitTSAndFileSize(files[0])
+		if err != nil {
+			return errors.Annotate(err, "get first binlog commit ts failed")
+		}
 	}
 
 	ddls, err := r.loadHistoryDDLJobs(firstBinlogTs)
