@@ -122,7 +122,7 @@ func formatValue(value types.Datum, tp byte) types.Datum {
 	return value
 }
 
-func getHashKey(schema, table string, ev pb.Event, ddlHandle *DDLHandle) (string, error) {
+func getHashKey(schema, table string, ev pb.Event) (string, error) {
 	tableInfo, err := ddlHandle.GetTableInfo(schema, table)
 	if err != nil {
 		return "", err
