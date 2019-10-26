@@ -103,6 +103,9 @@ func (f *PBFile) flushDDL(b bool) error {
 	var sum int64
 	var n int64
 	for _, v := range f.ddl {
+		if v == nil {
+			return nil
+		}
 		data, err := v.Marshal()
 		if err != nil {
 			return errors.Trace(err)
