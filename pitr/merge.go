@@ -309,7 +309,7 @@ func (tm *TableMerge) FlushDMLBinlog(commitTS int64) error {
 			r = append(r, data)
 		}
 
-		log.Info("generate new event", zap.String("event", fmt.Sprintf("%v", row)))
+		log.Debug("generate new event", zap.String("event", fmt.Sprintf("%v", row)))
 		newEvent := pb.Event{
 			SchemaName: &row.schema,
 			TableName:  &row.table,
