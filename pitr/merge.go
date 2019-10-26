@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"sync"
 
 	"github.com/pingcap/errors"
 	"github.com/pingcap/log"
@@ -47,6 +48,8 @@ type Merge struct {
 	ddlHandle *DDLHandle
 
 	maxCommitTS int64
+
+	wg sync.WaitGroup
 }
 
 // NewMerge returns a new Merge
@@ -184,45 +187,67 @@ func (m *Merge) Reduce() error {
 	}
 
 	log.Info("", zap.Strings("sub dirs", subDirs))
+
+	resultCh := make(chan error, len(subDirs))
+
 	for _, dir := range subDirs {
+		go func(dir string, resultCh chan error) {
+			binlogger, err := binlogfile.OpenBinlogger(path.Join(defaultOutputDir, dir))
+			if err != nil {
+				resultCh <- errors.Trace(err)
+			}
 
-		binlogger, err := binlogfile.OpenBinlogger(path.Join(defaultOutputDir, dir))
-		if err != nil {
-			return errors.Trace(err)
-		}
+			dirPath := path.Join(m.tempDir, dir)
+			fNames, err := binlogfile.ReadDir(dirPath)
+			if err != nil {
+				resultCh <- errors.Trace(err)
+			}
+			log.Info("reduce", zap.Strings("files", fNames))
 
-		dirPath := path.Join(m.tempDir, dir)
-		fNames, err := binlogfile.ReadDir(dirPath)
-		if err != nil {
-			return errors.Trace(err)
-		}
-		log.Info("reduce", zap.Strings("files", fNames))
+			for _, fName := range fNames {
+				binlogCh, errCh := m.read(path.Join(dirPath, fName))
 
-		for _, fName := range fNames {
-			binlogCh, errCh := m.read(path.Join(dirPath, fName))
-
-		Loop:
-			for {
-				select {
-				case binlog, ok := <-binlogCh:
-					if ok {
-						err := m.analyzeBinlog(binlogger, binlog)
-						if err != nil {
-							return err
+			Loop:
+				for {
+					select {
+					case binlog, ok := <-binlogCh:
+						if ok {
+							err := m.analyzeBinlog(binlogger, binlog)
+							if err != nil {
+								resultCh <- errors.Trace(err)
+							}
+							m.maxCommitTS = binlog.CommitTs
+						} else {
+							break Loop
 						}
-						m.maxCommitTS = binlog.CommitTs
-					} else {
-						break Loop
+					case err := <-errCh:
+						resultCh <- errors.Trace(err)
 					}
-				case err := <-errCh:
-					return err
 				}
 			}
-		}
 
-		err = m.FlushDMLBinlog(binlogger, m.maxCommitTS)
-		if err != nil {
-			return err
+			err = m.FlushDMLBinlog(binlogger, m.maxCommitTS)
+			if err != nil {
+				resultCh <- errors.Trace(err)
+			}
+
+			log.Info("reduce finished", zap.String("dir", dir))
+			resultCh <- nil
+		}(dir, resultCh)
+	}
+
+	successNum := 0
+	for {
+		select {
+		case err := <-resultCh:
+			if err != nil {
+				return err
+			}
+
+			successNum++
+			if successNum == len(subDirs) {
+				return nil
+			}
 		}
 	}
 
