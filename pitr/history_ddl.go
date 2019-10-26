@@ -269,7 +269,7 @@ func (s *Schema) addJob(job *model.Job) {
 func (s *Schema) handleDDLs() error {
 	var i int
 	for i = 0; i < len(s.jobs); i++ {
-		log.Info("handle history ddl job", zap.Reflect("job", s.jobs[i]))
+		log.Debug("handle history ddl job", zap.Reflect("job", s.jobs[i]))
 		if skipJob(s.jobs[i]) {
 			log.Debug("skip ddl job", zap.Stringer("job", s.jobs[i]))
 			continue

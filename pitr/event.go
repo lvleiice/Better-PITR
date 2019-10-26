@@ -37,8 +37,8 @@ func (e *Event) String() string {
 // update + update = update
 // delete + insert = update
 func (e *Event) Merge(newEvent *Event) {
-	log.Info("merge two event", zap.Stringer("old event", e), zap.Stringer("new event", newEvent))
-	defer log.Info("after merge", zap.Stringer("event", e))
+	log.Debug("merge two event", zap.Stringer("old event", e), zap.Stringer("new event", newEvent))
+	defer log.Debug("after merge", zap.Stringer("event", e))
 
 	if e.eventType == pb.EventType_Insert {
 		if newEvent.eventType == pb.EventType_Insert {
