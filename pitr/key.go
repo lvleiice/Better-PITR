@@ -32,7 +32,7 @@ func getInsertAndDeleteRowKey(row [][]byte, info *tableInfo) (string, []*pb.Colu
 
 		tp := col.Tp[0]
 		val = formatValue(val, tp)
-		log.Info("format value",
+		log.Debug("format value",
 			zap.String("col name", col.Name),
 			zap.String("mysql type", col.MysqlType),
 			zap.Reflect("value", val.GetValue()))
@@ -79,7 +79,7 @@ func getUpdateRowKey(row [][]byte, info *tableInfo) (string, string, []*pb.Colum
 		tp := col.Tp[0]
 		val = formatValue(val, tp)
 		cVal = formatValue(cVal, tp)
-		log.Info("format value",
+		log.Debug("format value",
 			zap.String("col name", col.Name),
 			zap.String("mysql type", col.MysqlType),
 			zap.Reflect("value", val.GetValue()),

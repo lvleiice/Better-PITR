@@ -33,7 +33,7 @@ func (e *Event) String() string {
 // Merge two event with same oldKey
 // insert + delete = nil, this event should be ignore
 // insert + update = insert, and need update oldKey
-// update + delete = nil, this event should be ignore
+// update + delete = delete
 // update + update = update
 // delete + insert = update
 func (e *Event) Merge(newEvent *Event) {
@@ -57,7 +57,7 @@ func (e *Event) Merge(newEvent *Event) {
 			// this should not be happen
 		} else if newEvent.eventType == pb.EventType_Delete {
 			// this row is deleted
-			e.isDeleted = true
+			e.eventType = pb.EventType_Delete
 		} else if newEvent.eventType == pb.EventType_Update {
 			// update the newValue
 			e.newToNew(newEvent)

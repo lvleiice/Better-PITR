@@ -128,6 +128,8 @@ func (d *DDLHandle) GetTableInfo(schema, table string) (*tableInfo, error) {
 		info := v.(*tableInfo)
 		return info, nil
 	}
+	log.Warn("table info not in memory, will get from local tidb")
+
 	return getTableInfo(d.db, schema, table)
 }
 
