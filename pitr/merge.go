@@ -59,7 +59,12 @@ func NewMerge(historyDDLs []*model.Job, binlogFiles []string, allFileSize int64)
 		return nil, err
 	}
 
-	ddlHandle, err = NewDDLHandle(historyDDLs)
+	ddlHandle, err = NewDDLHandle()
+	if err != nil {
+		return nil, err
+	}
+
+	err = ddlHandle.ExecuteHistoryDDLs(historyDDLs)
 	if err != nil {
 		return nil, err
 	}

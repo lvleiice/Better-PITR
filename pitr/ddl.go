@@ -49,14 +49,11 @@ type DDLHandle struct {
 	tableInfos sync.Map
 
 	tidbServer *tidblite.TiDBServer
+
+	historyDDLs []*model.Job
 }
 
-func NewDDLHandle(historyDDLs []*model.Job) (*DDLHandle, error) {
-	historySchema, err := NewSchema(historyDDLs)
-	if err != nil {
-		return nil, err
-	}
-
+func NewDDLHandle() (*DDLHandle, error) {
 	// run a mock tidb in local, used to execute ddl and get table info
 	if err := os.Mkdir(defaultTiDBDir, os.ModePerm); err != nil {
 		return nil, err
@@ -84,16 +81,22 @@ func NewDDLHandle(historyDDLs []*model.Job) (*DDLHandle, error) {
 		tidbServer: tidbServer,
 	}
 
-	tableInfos, err := historySchema.AllTableInfos()
-	if err != nil {
-		return nil, err
-	}
-	for _, info := range tableInfos {
-		log.Info(fmt.Sprintf("store history table info: %v", info))
-		ddlHandle.tableInfos.Store(quoteSchema(info.schema, info.table), info)
+	return ddlHandle, nil
+}
+
+func (d *DDLHandle) ExecuteHistoryDDLs(historyDDLs []*model.Job) error {
+	for _, ddl := range historyDDLs {
+		if skipJob(ddl) {
+			continue
+		}
+
+		err := d.ExecuteDDL(ddl.Query)
+		if err != nil {
+			return errors.Trace(err)
+		}
 	}
 
-	return ddlHandle, nil
+	return nil
 }
 
 // ExecuteDDL executes ddl, and then update the table's info
@@ -442,4 +445,12 @@ func (d *DDLHandle) insertMapKeyFromDB(newKey, oldKey string) error {
 	}
 	_, err = d.db.Exec(ins)
 	return err
+}
+
+// TiDB write DDL Binlog for every DDL Job, we must ignore jobs that are cancelled or rollback
+// For older version TiDB, it write DDL Binlog in the txn that the state of job is changed to *synced*
+// Now, it write DDL Binlog in the txn that the state of job is changed to *done* (before change to *synced*)
+// At state *done*, it will be always and only changed to *synced*.
+func skipJob(job *model.Job) bool {
+	return !job.IsSynced() && !job.IsDone()
 }
