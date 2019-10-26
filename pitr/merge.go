@@ -26,6 +26,9 @@ const maxMemorySize int64 = 2 * 1024 * 1024 * 1024 // 2G
 var (
 	defaultTempDir   string = "./temp"
 	defaultOutputDir string = "./new_binlog"
+
+	// used for handle ddl, and update table info
+	ddlHandle *DDLHandle
 )
 
 // Merge used to merge same keys binlog into one
@@ -42,23 +45,17 @@ type Merge struct {
 	// memory maybe not enough, need split all binlog files into multiple temp files
 	splitNum int
 
-	keyEvent map[string]*Event
-
-	// used for handle ddl, and update table info
-	ddlHandle *DDLHandle
-
-	maxCommitTS int64
-
 	wg sync.WaitGroup
 }
 
 // NewMerge returns a new Merge
 func NewMerge(historyDDLs []*model.Job, binlogFiles []string, allFileSize int64) (*Merge, error) {
-	if err := os.Mkdir(defaultTempDir, 0700); err != nil {
+	err := os.Mkdir(defaultTempDir, 0700)
+	if err != nil {
 		return nil, err
 	}
 
-	ddlHandle, err := NewDDLHandle(historyDDLs)
+	ddlHandle, err = NewDDLHandle(historyDDLs)
 	if err != nil {
 		return nil, err
 	}
@@ -74,8 +71,6 @@ func NewMerge(historyDDLs []*model.Job, binlogFiles []string, allFileSize int64)
 		outputDir:   defaultOutputDir,
 		binlogFiles: binlogFiles,
 		splitNum:    snum,
-		ddlHandle:   ddlHandle,
-		keyEvent:    make(map[string]*Event),
 	}, nil
 }
 
@@ -124,7 +119,7 @@ func (m *Merge) Map() error {
 					}
 
 					var hk string
-					hk, err = getHashKey(schema, table, event, m.ddlHandle)
+					hk, err = getHashKey(schema, table, event)
 					if err != nil {
 						return err
 					}
@@ -149,11 +144,11 @@ func (m *Merge) Map() error {
 					pf = fileMap[key]
 				}
 				var rebin *pb.Binlog
-				rebin, err = rewriteDDL(binlog, m.ddlHandle)
+				rebin, err = rewriteDDL(binlog)
 				if err != nil {
 					return err
 				}
-				err = m.ddlHandle.ExecuteDDL(string(binlog.GetDdlQuery()))
+				err = ddlHandle.ExecuteDDL(string(binlog.GetDdlQuery()))
 				if err != nil {
 					return err
 				}
@@ -169,7 +164,7 @@ func (m *Merge) Map() error {
 		v.Close()
 	}
 
-	m.ddlHandle.ResetDB()
+	ddlHandle.ResetDB()
 	return nil
 }
 
@@ -191,49 +186,12 @@ func (m *Merge) Reduce() error {
 	resultCh := make(chan error, len(subDirs))
 
 	for _, dir := range subDirs {
-		go func(dir string, resultCh chan error) {
-			binlogger, err := binlogfile.OpenBinlogger(path.Join(defaultOutputDir, dir))
-			if err != nil {
-				resultCh <- errors.Trace(err)
-			}
+		tableMerge, err := NewTableMerge(path.Join(m.tempDir, dir), path.Join(defaultOutputDir, dir))
+		if err != nil {
+			return errors.Trace(err)
+		}
 
-			dirPath := path.Join(m.tempDir, dir)
-			fNames, err := binlogfile.ReadDir(dirPath)
-			if err != nil {
-				resultCh <- errors.Trace(err)
-			}
-			log.Info("reduce", zap.Strings("files", fNames))
-
-			for _, fName := range fNames {
-				binlogCh, errCh := m.read(path.Join(dirPath, fName))
-
-			Loop:
-				for {
-					select {
-					case binlog, ok := <-binlogCh:
-						if ok {
-							err := m.analyzeBinlog(binlogger, binlog)
-							if err != nil {
-								resultCh <- errors.Trace(err)
-							}
-							m.maxCommitTS = binlog.CommitTs
-						} else {
-							break Loop
-						}
-					case err := <-errCh:
-						resultCh <- errors.Trace(err)
-					}
-				}
-			}
-
-			err = m.FlushDMLBinlog(binlogger, m.maxCommitTS)
-			if err != nil {
-				resultCh <- errors.Trace(err)
-			}
-
-			log.Info("reduce finished", zap.String("dir", dir))
-			resultCh <- nil
-		}(dir, resultCh)
+		go tableMerge.Process(resultCh)
 	}
 
 	successNum := 0
@@ -254,11 +212,83 @@ func (m *Merge) Reduce() error {
 	return err
 }
 
+func (m *Merge) Close(reserve bool) {
+	if !reserve {
+		if err := os.RemoveAll(m.tempDir); err != nil {
+			log.Warn("remove temp dir", zap.String("dir", m.tempDir), zap.Error(err))
+		}
+	}
+	ddlHandle.Close()
+}
+
+type TableMerge struct {
+	inputDir  string
+	outputDir string
+
+	keyEvent map[string]*Event
+
+	binlogger binlogfile.Binlogger
+
+	maxCommitTS int64
+}
+
+func NewTableMerge(inputDir, outputDir string) (*TableMerge, error) {
+	binlogger, err := binlogfile.OpenBinlogger(outputDir)
+	if err != nil {
+		return nil, errors.Trace(err)
+	}
+
+	return &TableMerge{
+		inputDir:  inputDir,
+		outputDir: outputDir,
+		keyEvent:  make(map[string]*Event),
+		binlogger: binlogger,
+	}, nil
+}
+
+func (tm *TableMerge) Process(resultCh chan error) {
+	fNames, err := binlogfile.ReadDir(tm.inputDir)
+	if err != nil {
+		resultCh <- errors.Trace(err)
+	}
+	log.Info("reduce", zap.String("dir", tm.inputDir), zap.Strings("files", fNames))
+
+	for _, fName := range fNames {
+		binlogCh, errCh := tm.read(path.Join(tm.inputDir, fName))
+
+	Loop:
+		for {
+			select {
+			case binlog, ok := <-binlogCh:
+				if ok {
+					err := tm.analyzeBinlog(binlog)
+					if err != nil {
+						resultCh <- errors.Trace(err)
+					}
+					tm.maxCommitTS = binlog.CommitTs
+				} else {
+					break Loop
+				}
+			case err := <-errCh:
+				resultCh <- errors.Trace(err)
+			}
+		}
+	}
+
+	err = tm.FlushDMLBinlog(tm.maxCommitTS)
+	if err != nil {
+		resultCh <- errors.Trace(err)
+	}
+
+	log.Info("reduce finished", zap.String("dir", tm.inputDir))
+	resultCh <- nil
+}
+
 // FlushDMLBinlog merge some events to one binlog, and then write to file
-func (m *Merge) FlushDMLBinlog(binlogger binlogfile.Binlogger, commitTS int64) error {
-	binlog := m.newDMLBinlog(commitTS)
+func (tm *TableMerge) FlushDMLBinlog(commitTS int64) error {
+	binlog := newDMLBinlog(commitTS)
 	i := 0
-	for _, row := range m.keyEvent {
+	for _, row := range tm.keyEvent {
 		i++
 		r := make([][]byte, 0, 10)
 		for _, c := range row.cols {
@@ -280,58 +310,39 @@ func (m *Merge) FlushDMLBinlog(binlogger binlogfile.Binlogger, commitTS int64) e
 
 		// every binlog contain 1000 rows as default
 		if i%1000 == 0 {
-			err := m.writeBinlog(binlogger, binlog)
+			err := tm.writeBinlog(binlog)
 			if err != nil {
 				return err
 			}
-			binlog = m.newDMLBinlog(commitTS)
+			binlog = newDMLBinlog(commitTS)
 		}
 	}
 
 	if len(binlog.DmlData.Events) != 0 {
-		err := m.writeBinlog(binlogger, binlog)
+		err := tm.writeBinlog(binlog)
 		if err != nil {
 			return err
 		}
 	}
 
 	// all event have already flush to file, clean these event
-	m.keyEvent = make(map[string]*Event)
+	tm.keyEvent = make(map[string]*Event)
 
 	return nil
 }
 
-func (m *Merge) newDMLBinlog(commitTS int64) *pb.Binlog {
-	return &pb.Binlog{
-		Tp:       pb.BinlogType_DML,
-		CommitTs: commitTS,
-		DmlData: &pb.DMLData{
-			Events: make([]pb.Event, 0, 1000),
-		},
-	}
-}
-
-func (m *Merge) writeBinlog(binlogger binlogfile.Binlogger, binlog *pb.Binlog) error {
+func (tm *TableMerge) writeBinlog(binlog *pb.Binlog) error {
 	data, err := binlog.Marshal()
 	if err != nil {
 		return errors.Trace(err)
 	}
 
-	_, err = binlogger.WriteTail(&tb.Entity{Payload: data})
+	_, err = tm.binlogger.WriteTail(&tb.Entity{Payload: data})
 	return errors.Trace(err)
 }
 
-func (m *Merge) Close(reserve bool) {
-	if !reserve {
-		if err := os.RemoveAll(m.tempDir); err != nil {
-			log.Warn("remove temp dir", zap.String("dir", m.tempDir), zap.Error(err))
-		}
-	}
-	m.ddlHandle.Close()
-}
-
 // read reads binlog from pb file
-func (m *Merge) read(file string) (chan *pb.Binlog, chan error) {
+func (tm *TableMerge) read(file string) (chan *pb.Binlog, chan error) {
 	binlogChan := make(chan *pb.Binlog, 10)
 	errChan := make(chan error)
 
@@ -363,21 +374,21 @@ func (m *Merge) read(file string) (chan *pb.Binlog, chan error) {
 	return binlogChan, errChan
 }
 
-func (m *Merge) analyzeBinlog(binlogger binlogfile.Binlogger, binlog *pb.Binlog) error {
+func (tm *TableMerge) analyzeBinlog(binlog *pb.Binlog) error {
 	switch binlog.Tp {
 	case pb.BinlogType_DML:
-		_, err := m.handleDML(binlog)
+		_, err := tm.handleDML(binlog)
 		if err != nil {
 			return err
 		}
 	case pb.BinlogType_DDL:
-		err := m.ddlHandle.ExecuteDDL(string(binlog.GetDdlQuery()))
+		err := ddlHandle.ExecuteDDL(string(binlog.GetDdlQuery()))
 		if err != nil {
 			return err
 		}
 		// merge DML events to several binlog and write to file, then write this DDL's binlog
-		m.FlushDMLBinlog(binlogger, binlog.CommitTs-1)
-		m.writeBinlog(binlogger, binlog)
+		tm.FlushDMLBinlog(binlog.CommitTs - 1)
+		tm.writeBinlog(binlog)
 
 	default:
 		panic("unreachable")
@@ -386,7 +397,7 @@ func (m *Merge) analyzeBinlog(binlogger binlogfile.Binlogger, binlog *pb.Binlog)
 }
 
 // handleDML split DML binlog to multiple Event and handle them
-func (m *Merge) handleDML(binlog *pb.Binlog) ([]*Event, error) {
+func (tm *TableMerge) handleDML(binlog *pb.Binlog) ([]*Event, error) {
 	dml := binlog.DmlData
 	if dml == nil {
 		return nil, errors.New("dml binlog's data can't be empty")
@@ -402,7 +413,7 @@ func (m *Merge) handleDML(binlog *pb.Binlog) ([]*Event, error) {
 
 		var r *Event
 
-		tableInfo, err := m.ddlHandle.GetTableInfo(schema, table)
+		tableInfo, err := ddlHandle.GetTableInfo(schema, table)
 		if err != nil {
 			return nil, err
 		}
@@ -441,7 +452,7 @@ func (m *Merge) handleDML(binlog *pb.Binlog) ([]*Event, error) {
 			panic("unreachable")
 		}
 
-		m.HandleEvent(r)
+		tm.HandleEvent(r)
 	}
 
 	return nil, nil
@@ -449,30 +460,30 @@ func (m *Merge) handleDML(binlog *pb.Binlog) ([]*Event, error) {
 
 // HandleEvent handles event, if event's key already exist, then merge this event
 // otherwise save this event
-func (m *Merge) HandleEvent(row *Event) {
+func (tm *TableMerge) HandleEvent(row *Event) {
 	key := row.oldKey
 	tp := row.eventType
-	oldRow, ok := m.keyEvent[key]
+	oldRow, ok := tm.keyEvent[key]
 	if ok {
 		oldRow.Merge(row)
 		if oldRow.isDeleted {
-			delete(m.keyEvent, key)
+			delete(tm.keyEvent, key)
 			return
 		}
 
 		if tp == pb.EventType_Update {
 			// update may change pk/uk value, so key may be changed
-			delete(m.keyEvent, key)
-			m.keyEvent[oldRow.oldKey] = oldRow
+			delete(tm.keyEvent, key)
+			tm.keyEvent[oldRow.oldKey] = oldRow
 		}
 	} else {
-		m.keyEvent[row.oldKey] = row
+		tm.keyEvent[row.oldKey] = row
 	}
 }
 
 // parserSchemaTableFromDDL parses ddl query to get schema and table
 // ddl like `use test; create table`
-func rewriteDDL(binlog *pb.Binlog, ddlHandle *DDLHandle) (*pb.Binlog, error) {
+func rewriteDDL(binlog *pb.Binlog) (*pb.Binlog, error) {
 	var ddl []byte
 	stmts, _, err := parser.New().Parse(string(binlog.DdlQuery), "", "")
 
@@ -504,4 +515,14 @@ func rewriteDDL(binlog *pb.Binlog, ddlHandle *DDLHandle) (*pb.Binlog, error) {
 	}
 	binlog.DdlQuery = ddl
 	return binlog, nil
+}
+
+func newDMLBinlog(commitTS int64) *pb.Binlog {
+	return &pb.Binlog{
+		Tp:       pb.BinlogType_DML,
+		CommitTs: commitTS,
+		DmlData: &pb.DMLData{
+			Events: make([]pb.Event, 0, 1000),
+		},
+	}
 }
