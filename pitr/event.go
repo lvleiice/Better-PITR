@@ -64,7 +64,7 @@ func (e *Event) Merge(newEvent *Event) {
 		}
 	} else if e.eventType == pb.EventType_Delete {
 		if newEvent.eventType == pb.EventType_Insert {
-			e.newToNew(newEvent)
+			e.newToOld(newEvent)
 			e.eventType = pb.EventType_Update
 		} else if newEvent.eventType == pb.EventType_Delete {
 			// this should never happened
@@ -83,5 +83,11 @@ func (e *Event) oldToNew(newEvent *Event) {
 func (e *Event) newToNew(newEvent *Event) {
 	for i, col := range newEvent.cols {
 		e.cols[i].ChangedValue = col.ChangedValue
+	}
+}
+
+func (e *Event) newToOld(newEvent *Event) {
+	for i, col := range newEvent.cols {
+		e.cols[i].ChangedValue = col.Value
 	}
 }
