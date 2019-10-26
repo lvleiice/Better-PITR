@@ -43,6 +43,8 @@ type Config struct {
 	LogFile  string `toml:"log-file" json:"log-file"`
 	LogLevel string `toml:"log-level" json:"log-level"`
 
+	reserveTempDir bool `toml:"reserve-tmpdir" json:"reserve-tmpdir"`
+
 	configFile   string
 	printVersion bool
 }
@@ -65,6 +67,7 @@ func NewConfig() *Config {
 	fs.StringVar(&c.LogLevel, "L", "info", "log level: debug, info, warn, error, fatal")
 	fs.StringVar(&c.configFile, "config", "", "[REQUIRED] path to configuration file")
 	fs.StringVar(&c.PDURLs, "pd-urls", "", "a comma separated list of PD endpoints")
+	fs.BoolVar(&c.reserveTempDir, "reserve-tmpdir", false, "reserve temp dir")
 	fs.BoolVar(&c.printVersion, "V", false, "print pitr version info")
 	return c
 }

@@ -296,9 +296,11 @@ func (m *Merge) writeBinlog(binlogger binlogfile.Binlogger, binlog *pb.Binlog) e
 	return errors.Trace(err)
 }
 
-func (m *Merge) Close() {
-	if err := os.RemoveAll(m.tempDir); err != nil {
-		log.Warn("remove temp dir", zap.String("dir", m.tempDir), zap.Error(err))
+func (m *Merge) Close(reserve bool) {
+	if !reserve {
+		if err := os.RemoveAll(m.tempDir); err != nil {
+			log.Warn("remove temp dir", zap.String("dir", m.tempDir), zap.Error(err))
+		}
 	}
 	m.ddlHandle.Close()
 }
