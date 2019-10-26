@@ -81,17 +81,6 @@ func NewDDLHandle() (*DDLHandle, error) {
 		tidbServer: tidbServer,
 	}
 
-	//tableInfos, err := historySchema.AllTableInfos()
-	//if err != nil {
-	//	return nil, err
-	//}
-
-	//for _, info := range tableInfos {
-	//	//log.Info(fmt.Sprintf("store history table info: %v", info))
-	//	ddlHandle.tableInfos.Store(quoteSchema(info.schema, info.table), info)
-	//	ddlHandle.
-	//}
-
 	return ddlHandle, nil
 }
 
