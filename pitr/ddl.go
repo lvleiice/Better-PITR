@@ -54,13 +54,6 @@ type DDLHandle struct {
 }
 
 func NewDDLHandle() (*DDLHandle, error) {
-	/*
-		historySchema, err := NewSchema(historyDDLs)
-		if err != nil {
-			return nil, err
-		}
-	*/
-
 	// run a mock tidb in local, used to execute ddl and get table info
 	if err := os.Mkdir(defaultTiDBDir, os.ModePerm); err != nil {
 		return nil, err
@@ -463,4 +456,12 @@ func (d *DDLHandle) insertMapKeyFromDB(newKey, oldKey string) error {
 	}
 	_, err = d.db.Exec(ins)
 	return err
+}
+
+// TiDB write DDL Binlog for every DDL Job, we must ignore jobs that are cancelled or rollback
+// For older version TiDB, it write DDL Binlog in the txn that the state of job is changed to *synced*
+// Now, it write DDL Binlog in the txn that the state of job is changed to *done* (before change to *synced*)
+// At state *done*, it will be always and only changed to *synced*.
+func skipJob(job *model.Job) bool {
+	return !job.IsSynced() && !job.IsDone()
 }
