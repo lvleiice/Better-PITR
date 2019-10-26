@@ -16,7 +16,7 @@ func TestGetAllDatabaseNames(t *testing.T) {
 	sql1 := "create database test1"
 
 	os.RemoveAll(defaultTiDBDir)
-	ddl, err := NewDDLHandle(nil)
+	ddl, err := NewDDLHandle()
 	assert.Assert(t, err == nil)
 
 	err = ddl.ExecuteDDL(sql)
@@ -39,7 +39,7 @@ func TestGetAllDatabaseNames(t *testing.T) {
 func TestResetDB(t *testing.T) {
 	sql := "create database test1"
 	os.RemoveAll(defaultTiDBDir)
-	ddl, err := NewDDLHandle(nil)
+	ddl, err := NewDDLHandle()
 	assert.Assert(t, err == nil)
 
 	err = ddl.ResetDB()
@@ -87,7 +87,7 @@ func TestGetAllTableNames(t *testing.T) {
 	sql := "create database test1"
 	sql1 := "use test1; create table t1(a int)"
 	os.RemoveAll(defaultTiDBDir)
-	ddl, err := NewDDLHandle(nil)
+	ddl, err := NewDDLHandle()
 	ddl.ResetDB()
 	assert.Assert(t, err == nil)
 	err = ddl.ExecuteDDL(sql)
@@ -104,7 +104,7 @@ func TestGetAllTableNames(t *testing.T) {
 
 func TestFetchMapKeyFromDB(t *testing.T) {
 	os.RemoveAll(defaultTiDBDir)
-	ddl, err := NewDDLHandle(nil)
+	ddl, err := NewDDLHandle()
 	assert.Assert(t, err == nil)
 	ddl.ResetDB()
 
