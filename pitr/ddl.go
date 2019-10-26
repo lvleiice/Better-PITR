@@ -88,8 +88,8 @@ func NewDDLHandle(historyDDLs []*model.Job) (*DDLHandle, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Info("history table info", zap.Reflect("tableInfos", tableInfos))
 	for _, info := range tableInfos {
+		log.Info(fmt.Sprintf("store history table info: %v", info))
 		ddlHandle.tableInfos.Store(quoteSchema(info.schema, info.table), info)
 	}
 

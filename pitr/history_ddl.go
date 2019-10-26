@@ -142,6 +142,14 @@ func (s *Schema) AllTableInfos() ([]*tableInfo, error) {
 			}
 		}
 
+		if primaryKey == nil && table.PKIsHandle {
+			pkColumn := table.GetPkName().O
+			primaryKey = &indexInfo{
+				name:    pkColumn,
+				columns: []string{pkColumn},
+			}
+		}
+
 		// put pk at the first of uniqueKeys
 		if primaryKey != nil {
 			uniqueKeys = append(uniqueKeys, *primaryKey)
@@ -259,9 +267,9 @@ func (s *Schema) addJob(job *model.Job) {
 }
 
 func (s *Schema) handleDDLs() error {
-	log.Info("handleDDLs", zap.Reflect("jobs", s.jobs))
 	var i int
 	for i = 0; i < len(s.jobs); i++ {
+		log.Info("handle history ddl job", zap.Reflect("job", s.jobs[i]))
 		if skipJob(s.jobs[i]) {
 			log.Debug("skip ddl job", zap.Stringer("job", s.jobs[i]))
 			continue
