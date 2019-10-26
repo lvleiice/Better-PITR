@@ -2,11 +2,13 @@ package pitr
 
 import (
 	"fmt"
+	"github.com/pingcap/parser/mysql"
 	"os"
 	"strings"
 	"testing"
 
 	"github.com/pingcap/tidb-binlog/proto/binlog"
+	pb "github.com/pingcap/tidb-binlog/proto/binlog"
 	tb "github.com/pingcap/tipb/go-binlog"
 	"gotest.tools/assert"
 )
@@ -76,17 +78,17 @@ func TestMapFunc1(t *testing.T) {
 	err = merge.Reduce()
 	assert.Assert(t, err == nil)
 
-	merge.ddlHandle.ResetDB()
+	ddlHandle.ResetDB()
 	sql := "create database test1; use test1; create table tb1 (a int);"
 	mybin := &pb_binlog.Binlog{
 		Tp:       pb_binlog.BinlogType_DDL,
 		CommitTs: 100,
 		DdlQuery: []byte(sql),
 	}
-	log, err := rewriteDDL(mybin, merge.ddlHandle)
+	log, err := rewriteDDL(mybin)
 	assert.Assert(t, err == nil)
 	assert.Assert(t, strings.EqualFold(string(log.DdlQuery), "USE `test1`;CREATE TABLE `tb1` (`a` INT);"))
-	merge.ddlHandle.ExecuteDDL(sql)
+	ddlHandle.ExecuteDDL(sql)
 
 	sql = "drop database test1; create database test2; use test; show tables;"
 	mybin = &pb_binlog.Binlog{
@@ -94,15 +96,58 @@ func TestMapFunc1(t *testing.T) {
 		CommitTs: 100,
 		DdlQuery: []byte(sql),
 	}
-	log, err = rewriteDDL(mybin, merge.ddlHandle)
+	log, err = rewriteDDL(mybin)
 	fmt.Printf("%v\n", err)
 	fmt.Printf("## %s\n", string(log.String()))
 	assert.Assert(t, err == nil)
 	assert.Assert(t, strings.EqualFold(string(log.DdlQuery), "DROP TABLE tb1;USE `test`;SHOW TABLES;"))
-	merge.ddlHandle.ExecuteDDL(sql)
+	ddlHandle.ExecuteDDL(sql)
 
 	merge.Close(false)
-	merge.ddlHandle.Close()
+	ddlHandle.Close()
 	os.RemoveAll(dstPath + "/")
 	os.RemoveAll(srcPath + "/")
+}
+
+func TestRewriteDML(t *testing.T) {
+	ev, err := generateUpdateEvent("test1", "tb1", 1024)
+	assert.Assert(t, err == nil)
+	evs, err := rewriteDML(ev)
+	assert.Assert(t, err == nil)
+	assert.Assert(t, len(evs) == 2)
+	assert.Assert(t, evs[0].Tp == pb.EventType_Delete)
+	assert.Assert(t, evs[1].Tp == pb.EventType_Insert)
+}
+
+func generateUpdateEvent(schema, table string, ts int64) (*pb.Event, error) {
+	col1, err := generateUpdateColumn(1, 2)
+	if err != nil {
+		return nil, err
+	}
+	col2, err := generateUpdateColumn(2, 3)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.Event{
+		Tp:         pb.EventType_Update,
+		SchemaName: &schema,
+		TableName:  &table,
+		Row:        [][]byte{col1, col2},
+	}, nil
+}
+
+// generate columns for test
+func generateUpdateColumn(before, after int64) ([]byte, error) {
+	col := &pb.Column{
+		Name:         "a",
+		Tp:           []byte{mysql.TypeInt24},
+		MysqlType:    "int",
+		Value:        encodeIntValue(before),
+		ChangedValue: encodeIntValue(after),
+	}
+	bt, err := col.Marshal()
+	if err != nil {
+		return nil, err
+	}
+	return bt, nil
 }
