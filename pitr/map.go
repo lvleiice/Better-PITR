@@ -71,6 +71,7 @@ func (f *PBFile) AddDDLEvent(binlog *pb.Binlog) error {
 	}
 	return nil
 }
+
 func (f *PBFile) flushDML(n int, b bool) error {
 	if len(f.dml[n].DmlData.Events) == 0 {
 		return nil
