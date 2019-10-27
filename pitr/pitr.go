@@ -61,15 +61,25 @@ func (r *PITR) Process() error {
 		return errors.Annotate(err, "load history ddls")
 	}
 
-	merge, err := NewMerge(ddls, files, fileSize)
+	merge, err := NewMerge(files, fileSize)
 	if err != nil {
 		return errors.Trace(err)
+	}
+
+	err = ddlHandle.ExecuteHistoryDDLs(ddls)
+	if err != nil {
+		return err
 	}
 
 	defer merge.Close(r.cfg.reserveTempDir)
 
 	if err := merge.Map(); err != nil {
 		return errors.Trace(err)
+	}
+
+	err = ddlHandle.ExecuteHistoryDDLs(ddls)
+	if err != nil {
+		return err
 	}
 
 	if err := merge.Reduce(); err != nil {

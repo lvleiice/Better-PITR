@@ -125,7 +125,9 @@ func (d *DDLHandle) ExecuteDDL(schema string, ddl string) error {
 
 			return d.ExecuteDDL(schema, ddl)
 		} else if strings.Contains(err.Error(), "No database selected") {
-			return d.ExecuteDDL(schema, fmt.Sprintf("use %s; %s", schema, ddl))
+			if len(schema) != 0 {
+				return d.ExecuteDDL(schema, fmt.Sprintf("use %s; %s", schema, ddl))
+			}
 		}
 
 		return errors.Trace(err)
