@@ -114,6 +114,7 @@ func (d *DDLHandle) ExecuteDDL(ddl string) error {
 			if err != nil {
 				return errors.Trace(err)
 			}
+			return d.ExecuteDDL(ddl)
 		}
 		return errors.Trace(err)
 	}
