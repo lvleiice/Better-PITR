@@ -45,6 +45,8 @@ type Config struct {
 
 	reserveTempDir bool `toml:"reserve-tmpdir" json:"reserve-tmpdir"`
 
+	schemaDir string `toml:"schema-dir" json:"schema-dir"`
+
 	configFile   string
 	printVersion bool
 }
@@ -69,6 +71,7 @@ func NewConfig() *Config {
 	fs.StringVar(&c.PDURLs, "pd-urls", "", "a comma separated list of PD endpoints")
 	fs.BoolVar(&c.reserveTempDir, "reserve-tmpdir", false, "reserve temp dir")
 	fs.BoolVar(&c.printVersion, "V", false, "print pitr version info")
+	fs.StringVar(&c.schemaDir, "schema-dir", "", "base schema info")
 	return c
 }
 

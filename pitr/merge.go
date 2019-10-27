@@ -14,7 +14,6 @@ import (
 	"github.com/pingcap/parser"
 	"github.com/pingcap/parser/ast"
 	"github.com/pingcap/parser/format"
-	"github.com/pingcap/parser/model"
 	"github.com/pingcap/tidb-binlog/pkg/binlogfile"
 	pb "github.com/pingcap/tidb-binlog/proto/binlog"
 	tb "github.com/pingcap/tipb/go-binlog"
@@ -53,18 +52,13 @@ type Merge struct {
 }
 
 // NewMerge returns a new Merge
-func NewMerge(historyDDLs []*model.Job, binlogFiles []string, allFileSize int64) (*Merge, error) {
+func NewMerge(binlogFiles []string, allFileSize int64) (*Merge, error) {
 	err := os.Mkdir(defaultTempDir, 0700)
 	if err != nil {
 		return nil, err
 	}
 
 	ddlHandle, err = NewDDLHandle()
-	if err != nil {
-		return nil, err
-	}
-
-	err = ddlHandle.ExecuteHistoryDDLs(historyDDLs)
 	if err != nil {
 		return nil, err
 	}
