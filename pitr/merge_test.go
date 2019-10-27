@@ -107,6 +107,7 @@ func TestMapFunc1(t *testing.T) {
 	ddlHandle.Close()
 	os.RemoveAll(dstPath + "/")
 	os.RemoveAll(srcPath + "/")
+	os.RemoveAll(defaultOutputDir)
 }
 
 func TestRewriteDML(t *testing.T) {
