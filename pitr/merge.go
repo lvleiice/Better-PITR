@@ -493,7 +493,7 @@ func (tm *TableMerge) HandleEvent(row *Event) {
 func rewriteDDL(binlog *pb.Binlog) (*pb.Binlog, error) {
 	var ddl []byte
 	stmts, _, err := parser.New().Parse(string(binlog.DdlQuery), "", "")
-
+	var schema string
 	for _, stmt := range stmts {
 		switch node := stmt.(type) {
 		case *ast.CreateDatabaseStmt:
@@ -507,6 +507,22 @@ func rewriteDDL(binlog *pb.Binlog) (*pb.Binlog, error) {
 				sql := fmt.Sprintf("DROP TABLE %s;", v)
 				ddl = append(ddl, sql...)
 			}
+		case *ast.CreateTableStmt:
+			if len(node.Table.Schema.O) != 0 {
+				schema = node.Table.Schema.O
+			} else if len(schema) > 0 {
+				node.Table.Schema.O = schema
+				node.Table.Schema.L = strings.ToLower(schema)
+			}
+			var sb strings.Builder
+			err = node.Restore(format.NewRestoreCtx(format.DefaultRestoreFlags, &sb))
+			if err != nil {
+				return nil, errors.Trace(err)
+			}
+			ddl = append(ddl, sb.String()...)
+			ddl = append(ddl, ';')
+		case *ast.UseStmt:
+			schema = node.DBName
 		default:
 			var sb strings.Builder
 			err = node.Restore(format.NewRestoreCtx(format.DefaultRestoreFlags, &sb))
