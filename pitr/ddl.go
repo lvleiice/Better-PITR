@@ -90,7 +90,11 @@ func (d *DDLHandle) ExecuteHistoryDDLs(historyDDLs []*model.Job) error {
 			continue
 		}
 
-		err := d.ExecuteDDL(ddl.BinlogInfo.DBInfo.Name.O, ddl.Query)
+		schemaName := ""
+		if ddl.BinlogInfo != nil && ddl.BinlogInfo.DBInfo != nil && ddl.BinlogInfo.DBInfo.Name != nil {
+			schemaName = ddl.BinlogInfo.DBInfo.Name.O
+		}
+		err := d.ExecuteDDL(schemaName, ddl.Query)
 		if err != nil {
 			return errors.Trace(err)
 		}
