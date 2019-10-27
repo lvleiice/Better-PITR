@@ -523,6 +523,13 @@ func rewriteDDL(binlog *pb.Binlog) (*pb.Binlog, error) {
 			ddl = append(ddl, ';')
 		case *ast.UseStmt:
 			schema = node.DBName
+			var sb strings.Builder
+			err = node.Restore(format.NewRestoreCtx(format.DefaultRestoreFlags, &sb))
+			if err != nil {
+				return nil, errors.Trace(err)
+			}
+			ddl = append(ddl, sb.String()...)
+			ddl = append(ddl, ';')
 		default:
 			var sb strings.Builder
 			err = node.Restore(format.NewRestoreCtx(format.DefaultRestoreFlags, &sb))
