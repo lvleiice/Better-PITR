@@ -102,12 +102,19 @@ func (d *DDLHandle) ExecuteHistoryDDLs(historyDDLs []*model.Job) error {
 // ExecuteDDL executes ddl, and then update the table's info
 func (d *DDLHandle) ExecuteDDL(ddl string) error {
 	log.Info("execute ddl", zap.String("ddl", ddl))
-	if _, err := d.db.Exec(ddl); err != nil {
-		return errors.Trace(err)
-	}
 
 	schema, table, err := parserSchemaTableFromDDL(ddl)
 	if err != nil {
+		return errors.Trace(err)
+	}
+
+	if _, err := d.db.Exec(ddl); err != nil {
+		if strings.Contains(err.Error(), "Unknown database") {
+			err := d.ExecuteDDL(fmt.Sprintf("create database if not exists `%s`", schema))
+			if err != nil {
+				return errors.Trace(err)
+			}
+		}
 		return errors.Trace(err)
 	}
 
