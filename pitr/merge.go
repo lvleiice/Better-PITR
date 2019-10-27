@@ -163,7 +163,7 @@ func (m *Merge) Map() error {
 				if err != nil {
 					return err
 				}
-				err = ddlHandle.ExecuteDDL(string(binlog.GetDdlQuery()))
+				err = ddlHandle.ExecuteDDL("", string(binlog.GetDdlQuery()))
 				if err != nil {
 					return err
 				}
@@ -397,7 +397,7 @@ func (tm *TableMerge) analyzeBinlog(binlog *pb.Binlog) error {
 			return err
 		}
 	case pb.BinlogType_DDL:
-		err := ddlHandle.ExecuteDDL(string(binlog.GetDdlQuery()))
+		err := ddlHandle.ExecuteDDL("", string(binlog.GetDdlQuery()))
 		if err != nil {
 			return err
 		}

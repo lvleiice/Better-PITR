@@ -19,10 +19,10 @@ func TestGetAllDatabaseNames(t *testing.T) {
 	ddl, err := NewDDLHandle()
 	assert.Assert(t, err == nil)
 
-	err = ddl.ExecuteDDL(sql)
+	err = ddl.ExecuteDDL("", sql)
 	assert.Assert(t, err == nil)
 
-	err = ddl.ExecuteDDL(sql1)
+	err = ddl.ExecuteDDL("", sql1)
 	assert.Assert(t, err == nil)
 
 	var n []string
@@ -45,7 +45,7 @@ func TestResetDB(t *testing.T) {
 	err = ddl.ResetDB()
 	assert.Assert(t, err == nil)
 
-	err = ddl.ExecuteDDL(sql)
+	err = ddl.ExecuteDDL("", sql)
 	fmt.Printf("## %v\n", err)
 	assert.Assert(t, err == nil)
 
@@ -54,7 +54,7 @@ func TestResetDB(t *testing.T) {
 	assert.Assert(t, err == nil)
 	assert.Assert(t, len(ns) == 2)
 
-	err = ddl.ExecuteDDL(sql)
+	err = ddl.ExecuteDDL("", sql)
 	assert.Assert(t, err != nil)
 
 	err = ddl.ResetDB()
@@ -64,7 +64,7 @@ func TestResetDB(t *testing.T) {
 	assert.Assert(t, err == nil)
 	assert.Assert(t, len(ns) == 1)
 
-	err = ddl.ExecuteDDL(sql)
+	err = ddl.ExecuteDDL("", sql)
 	assert.Assert(t, err == nil)
 
 	ns, err = ddl.getAllDatabaseNames()
@@ -90,10 +90,10 @@ func TestGetAllTableNames(t *testing.T) {
 	ddl, err := NewDDLHandle()
 	ddl.ResetDB()
 	assert.Assert(t, err == nil)
-	err = ddl.ExecuteDDL(sql)
+	err = ddl.ExecuteDDL("", sql)
 	assert.Assert(t, err == nil)
 
-	err = ddl.ExecuteDDL(sql1)
+	err = ddl.ExecuteDDL("", sql1)
 	assert.Assert(t, err == nil)
 
 	var s []string

@@ -90,7 +90,7 @@ func (d *DDLHandle) ExecuteHistoryDDLs(historyDDLs []*model.Job) error {
 			continue
 		}
 
-		err := d.ExecuteDDL(ddl.Query)
+		err := d.ExecuteDDL(ddl.BinlogInfo.DBInfo.Name.O, ddl.Query)
 		if err != nil {
 			return errors.Trace(err)
 		}
@@ -100,22 +100,30 @@ func (d *DDLHandle) ExecuteHistoryDDLs(historyDDLs []*model.Job) error {
 }
 
 // ExecuteDDL executes ddl, and then update the table's info
-func (d *DDLHandle) ExecuteDDL(ddl string) error {
+func (d *DDLHandle) ExecuteDDL(schema string, ddl string) error {
 	log.Info("execute ddl", zap.String("ddl", ddl))
 
-	schema, table, err := parserSchemaTableFromDDL(ddl)
+	schemaInDDL, table, err := parserSchemaTableFromDDL(ddl)
 	if err != nil {
 		return errors.Trace(err)
 	}
 
+	if len(schemaInDDL) != 0 {
+		schema = schemaInDDL
+	}
+
 	if _, err := d.db.Exec(ddl); err != nil {
 		if strings.Contains(err.Error(), "Unknown database") {
-			err := d.ExecuteDDL(fmt.Sprintf("create database if not exists `%s`", schema))
+			err := d.ExecuteDDL(schema, fmt.Sprintf("create database if not exists `%s`", schema))
 			if err != nil {
 				return errors.Trace(err)
 			}
-			return d.ExecuteDDL(ddl)
+
+			return d.ExecuteDDL(schema, ddl)
+		} else if strings.Contains(err.Error(), "No database selected") {
+			return d.ExecuteDDL(schema, fmt.Sprintf("use %s; %s", schema, ddl))
 		}
+
 		return errors.Trace(err)
 	}
 
@@ -175,14 +183,14 @@ func (d *DDLHandle) ResetDB() error {
 	var sql string
 	for _, v := range names {
 		sql = fmt.Sprintf("DROP DATABASE %s", v)
-		err = d.ExecuteDDL(sql)
+		err = d.ExecuteDDL(v, sql)
 		if err != nil {
 			return err
 		}
 	}
 
 	sql = "CREATE DATABASE IF NOT EXISTS test"
-	return d.ExecuteDDL(sql)
+	return d.ExecuteDDL("test", sql)
 }
 
 func (d *DDLHandle) Close() {
@@ -415,11 +423,11 @@ func (d *DDLHandle) getAllTableNames(schema string) ([]string, error) {
 }
 
 func (d *DDLHandle) createMapTable() error {
-	err := d.ExecuteDDL(createMapDB)
+	err := d.ExecuteDDL("", createMapDB)
 	if err != nil {
 		return err
 	}
-	return d.ExecuteDDL(createMapTable)
+	return d.ExecuteDDL("", createMapTable)
 }
 
 func (d *DDLHandle) fetchMapKeyFromDB(key string) (string, error) {
