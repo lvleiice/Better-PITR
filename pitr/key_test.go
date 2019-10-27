@@ -24,9 +24,9 @@ func TestGetHashKey(t *testing.T) {
 	table := "tb1"
 	//test primary/unique key
 	evs := genTestUpdateEvent("test5", "tb1")
-	err = ddl.ExecuteDDL("create database test5;")
+	err = ddl.ExecuteDDL("", "create database test5;")
 	assert.Assert(t, err == nil)
-	err = ddl.ExecuteDDL("use test5; create table tb1 (a int unique, b int)")
+	err = ddl.ExecuteDDL("", "use test5; create table tb1 (a int unique, b int)")
 	assert.Assert(t, err == nil)
 	key, err := getHashKey(schema, table, &evs[0])
 	assert.Assert(t, err == nil)
@@ -44,7 +44,7 @@ func TestGetHashKey(t *testing.T) {
 	table = "tb2"
 	evs = genTestUpdateEvent("test5", "tb2")
 	assert.Assert(t, err == nil)
-	err = ddl.ExecuteDDL("use test5; create table tb2 (a int, b int)")
+	err = ddl.ExecuteDDL("", "use test5; create table tb2 (a int, b int)")
 	assert.Assert(t, err == nil)
 	key, err = getHashKey(schema, table, &evs[0])
 	assert.Assert(t, err == nil)
@@ -62,7 +62,7 @@ func TestGetHashKey(t *testing.T) {
 	table = "tb3"
 	evs = genTestInsertEvent("test5", "tb3")
 	assert.Assert(t, err == nil)
-	err = ddl.ExecuteDDL("use test5; create table tb3 (a int primary key, b int)")
+	err = ddl.ExecuteDDL("", "use test5; create table tb3 (a int primary key, b int)")
 	assert.Assert(t, err == nil)
 	key, err = getHashKey(schema, table, &evs[0])
 	assert.Assert(t, err == nil)
@@ -79,7 +79,7 @@ func TestGetHashKey(t *testing.T) {
 	table = "tb4"
 	evs = genTestInsertEvent("test5", "tb4")
 	assert.Assert(t, err == nil)
-	err = ddl.ExecuteDDL("use test5; create table tb4 (a int, b int)")
+	err = ddl.ExecuteDDL("", "use test5; create table tb4 (a int, b int)")
 	assert.Assert(t, err == nil)
 	key, err = getHashKey(schema, table, &evs[0])
 	assert.Assert(t, err == nil)
@@ -97,7 +97,7 @@ func TestGetHashKey(t *testing.T) {
 	table = "tb5"
 	evs = genTestInsertEvent("test5", "tb5")
 	assert.Assert(t, err == nil)
-	err = ddl.ExecuteDDL("use test5; create table tb5 (a int, b int)")
+	err = ddl.ExecuteDDL("", "use test5; create table tb5 (a int, b int)")
 	assert.Assert(t, err == nil)
 	key, err = getHashKey(schema, table, &evs[0])
 	assert.Assert(t, err == nil)
@@ -114,7 +114,7 @@ func TestGetHashKey(t *testing.T) {
 	table = "tb6"
 	evs = genTestInsertEvent("test5", "tb6")
 	assert.Assert(t, err == nil)
-	err = ddl.ExecuteDDL("use test5; create table tb6 (a int primary key, b int)")
+	err = ddl.ExecuteDDL("", "use test5; create table tb6 (a int primary key, b int)")
 	assert.Assert(t, err == nil)
 	key, err = getHashKey(schema, table, &evs[0])
 	assert.Assert(t, err == nil)

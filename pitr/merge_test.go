@@ -88,7 +88,7 @@ func TestMapFunc1(t *testing.T) {
 	log, err := rewriteDDL(mybin)
 	assert.Assert(t, err == nil)
 	assert.Assert(t, strings.EqualFold(string(log.DdlQuery), "USE `test1`;CREATE TABLE `tb1` (`a` INT);"))
-	ddlHandle.ExecuteDDL(sql)
+	ddlHandle.ExecuteDDL("test1", sql)
 
 	sql = "drop database test1; create database test2; use test; show tables;"
 	mybin = &pb_binlog.Binlog{
@@ -101,7 +101,7 @@ func TestMapFunc1(t *testing.T) {
 	fmt.Printf("## %s\n", string(log.String()))
 	assert.Assert(t, err == nil)
 	assert.Assert(t, strings.EqualFold(string(log.DdlQuery), "DROP TABLE tb1;USE `test`;SHOW TABLES;"))
-	ddlHandle.ExecuteDDL(sql)
+	ddlHandle.ExecuteDDL("test1", sql)
 
 	merge.Close(false)
 	ddlHandle.Close()
