@@ -108,7 +108,7 @@ func (d *DDLHandle) ExecuteDDL(schema string, ddl string) error {
 		return errors.Trace(err)
 	}
 
-	if len(schemaInDDL) != 0 {
+	if len(schema) == 0 {
 		schema = schemaInDDL
 	}
 

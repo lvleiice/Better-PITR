@@ -507,7 +507,7 @@ func rewriteDDL(binlog *pb.Binlog) (*pb.Binlog, error) {
 		case *ast.DropDatabaseStmt:
 			tbs, err := ddlHandle.getAllTableNames(node.Name)
 			if err != nil {
-				return nil, err
+				return nil, errors.Trace(err)
 			}
 			for _, v := range tbs {
 				sql := fmt.Sprintf("DROP TABLE %s;", v)
@@ -517,7 +517,7 @@ func rewriteDDL(binlog *pb.Binlog) (*pb.Binlog, error) {
 			var sb strings.Builder
 			err = node.Restore(format.NewRestoreCtx(format.DefaultRestoreFlags, &sb))
 			if err != nil {
-				return nil, err
+				return nil, errors.Trace(err)
 			}
 			ddl = append(ddl, sb.String()...)
 			ddl = append(ddl, ';')

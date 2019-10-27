@@ -79,7 +79,11 @@ func TestMapFunc1(t *testing.T) {
 	assert.Assert(t, err == nil)
 
 	ddlHandle.ResetDB()
-	sql := "create database test1; use test1; create table tb1 (a int);"
+	createDBSQL := "create database test1;"
+	err = ddlHandle.ExecuteDDL("test1", createDBSQL)
+	assert.Assert(t, err == nil)
+
+	sql := "use test1; create table tb1 (a int);"
 	mybin := &pb_binlog.Binlog{
 		Tp:       pb_binlog.BinlogType_DDL,
 		CommitTs: 100,
@@ -88,7 +92,8 @@ func TestMapFunc1(t *testing.T) {
 	log, err := rewriteDDL(mybin)
 	assert.Assert(t, err == nil)
 	assert.Assert(t, strings.EqualFold(string(log.DdlQuery), "USE `test1`;CREATE TABLE `tb1` (`a` INT);"))
-	ddlHandle.ExecuteDDL("test1", sql)
+	err = ddlHandle.ExecuteDDL("test1", sql)
+	assert.Assert(t, err == nil)
 
 	sql = "drop database test1; create database test2; use test; show tables;"
 	mybin = &pb_binlog.Binlog{
