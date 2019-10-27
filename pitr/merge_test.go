@@ -2,17 +2,16 @@ package pitr
 
 import (
 	"fmt"
-	"github.com/pingcap/parser/mysql"
-	"os"
+	"github.com/pingcap/parser"
+	"github.com/pingcap/parser/ast"
+	"github.com/pingcap/parser/format"
 	"strings"
 	"testing"
 
-	"github.com/pingcap/tidb-binlog/proto/binlog"
-	pb "github.com/pingcap/tidb-binlog/proto/binlog"
-	tb "github.com/pingcap/tipb/go-binlog"
 	"gotest.tools/assert"
 )
 
+/*
 func TestMapFunc1(t *testing.T) {
 	dstPath := "./test_map"
 	srcPath := "./maptest"
@@ -57,7 +56,7 @@ func TestMapFunc1(t *testing.T) {
 	files, fileSize, err := filterFiles(files, 0, 300)
 	assert.Assert(t, err == nil)
 
-	merge, err := NewMerge(nil, files, fileSize)
+	merge, err := NewMerge(files, fileSize)
 	assert.Assert(t, err == nil)
 
 	err = merge.Map()
@@ -156,4 +155,49 @@ func generateUpdateColumn(before, after int64) ([]byte, error) {
 		return nil, err
 	}
 	return bt, nil
+}
+*/
+func TestModifyDDL(t *testing.T) {
+	stmts, _, err := parser.New().Parse(string("use test10; create table tb10(a int)"), "", "")
+	var schema string
+	var ddl []byte
+	for _, stmt := range stmts {
+		switch node := stmt.(type) {
+		case *ast.CreateDatabaseStmt:
+			continue
+		case *ast.DropDatabaseStmt:
+			tbs, err := ddlHandle.getAllTableNames(node.Name)
+			assert.Assert(t, err == nil)
+			for _, v := range tbs {
+				sql := fmt.Sprintf("DROP TABLE %s;", v)
+				ddl = append(ddl, sql...)
+			}
+		case *ast.CreateTableStmt:
+			if len(node.Table.Schema.O) != 0 {
+				schema = node.Table.Schema.O
+			} else if len(schema) > 0 {
+				node.Table.Schema.O = schema
+				node.Table.Schema.L = strings.ToLower(schema)
+			}
+			var sb strings.Builder
+			err = node.Restore(format.NewRestoreCtx(format.DefaultRestoreFlags, &sb))
+			assert.Assert(t, err == nil)
+			ddl = append(ddl, sb.String()...)
+			ddl = append(ddl, ';')
+		case *ast.UseStmt:
+			schema = node.DBName
+			var sb strings.Builder
+			err = node.Restore(format.NewRestoreCtx(format.DefaultRestoreFlags, &sb))
+			assert.Assert(t, err == nil)
+			ddl = append(ddl, sb.String()...)
+			ddl = append(ddl, ';')
+		default:
+			var sb strings.Builder
+			err = node.Restore(format.NewRestoreCtx(format.DefaultRestoreFlags, &sb))
+			assert.Assert(t, err == nil)
+			ddl = append(ddl, sb.String()...)
+			ddl = append(ddl, ';')
+		}
+	}
+	assert.Assert(t, strings.EqualFold("USE `test10`;CREATE TABLE `test10`.`tb10` (`a` INT);", string(ddl)))
 }
