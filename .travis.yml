@@ -11,4 +11,5 @@ env:
 
 script:
   - make
+  - make unit_test
   - make integration_test

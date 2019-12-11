@@ -44,7 +44,7 @@ pitr:
 install:
 	go install ./...
 
-test:
+unit_test:
 	mkdir -p "$(TEST_DIR)"
 	@export log_level=error;\
 	$(GOTEST) -cover -covermode=count -coverprofile="$(TEST_DIR)/cov.unit.out" $(PACKAGES)
