@@ -1,6 +1,6 @@
 module github.com/tsthght/PITR
 
-go 1.12
+go 1.13
 
 require (
 	github.com/WangXiangUSTC/tidb-lite v0.0.0-20190718135959-4a72c54defd9
