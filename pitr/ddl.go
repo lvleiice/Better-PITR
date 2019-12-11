@@ -107,6 +107,9 @@ func (d *DDLHandle) ExecuteHistoryDDLs(historyDDLs []*model.Job) error {
 func (d *DDLHandle) ExecuteDDL(schema string, ddl string) error {
 	log.Info("execute ddl", zap.String("ddl", ddl))
 
+	if len(ddl) == 0 {
+		return nil
+	}
 	schemaInDDL, table, err := parserSchemaTableFromDDL(ddl)
 	if err != nil {
 		return errors.Trace(err)
@@ -125,7 +128,11 @@ func (d *DDLHandle) ExecuteDDL(schema string, ddl string) error {
 
 			return d.ExecuteDDL(schema, ddl)
 		} else if strings.Contains(err.Error(), "No database selected") {
-			return d.ExecuteDDL(schema, fmt.Sprintf("use %s; %s", schema, ddl))
+			if len(schema) != 0 {
+				return d.ExecuteDDL(schema, fmt.Sprintf("use %s; %s", schema, ddl))
+			}
+		} else if strings.Contains(err.Error(), "already exists") {
+			return nil
 		}
 
 		return errors.Trace(err)

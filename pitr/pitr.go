@@ -2,7 +2,9 @@ package pitr
 
 import (
 	"fmt"
+	"io/ioutil"
 	"sort"
+	"strings"
 
 	"github.com/pingcap/errors"
 	"github.com/pingcap/log"
@@ -56,20 +58,24 @@ func (r *PITR) Process() error {
 		}
 	}
 
-	ddls, err := r.loadHistoryDDLJobs(firstBinlogTs)
+	merge, err := NewMerge(files, fileSize)
+	if err != nil {
+		return errors.Trace(err)
+	}
+	defer merge.Close(r.cfg.reserveTempDir)
+
+	err = r.ExecuteHistoryDDLs(firstBinlogTs)
 	if err != nil {
 		return errors.Annotate(err, "load history ddls")
 	}
 
-	merge, err := NewMerge(ddls, files, fileSize)
-	if err != nil {
+	if err := merge.Map(); err != nil {
 		return errors.Trace(err)
 	}
 
-	defer merge.Close(r.cfg.reserveTempDir)
-
-	if err := merge.Map(); err != nil {
-		return errors.Trace(err)
+	err = r.ExecuteHistoryDDLs(firstBinlogTs)
+	if err != nil {
+		return errors.Annotate(err, "load history ddls")
 	}
 
 	if err := merge.Reduce(); err != nil {
@@ -84,6 +90,42 @@ func (r *PITR) Close() error {
 	return nil
 }
 
+func (r *PITR) LoadBaseSchema() ([]string, error) {
+	content, err := ioutil.ReadFile(r.cfg.schemaFile)
+	if err != nil {
+		return nil, err
+	}
+
+	ddls := strings.Split(string(content), "\n")
+	return ddls, nil
+}
+
+func (r *PITR) ExecuteHistoryDDLs(beginTS int64) error {
+	if len(r.cfg.schemaFile) != 0 {
+		ddls, err := r.LoadBaseSchema()
+		if err != nil {
+			return err
+		}
+		for _, ddl := range ddls {
+			err := ddlHandle.ExecuteDDL("", ddl)
+			if err != nil {
+				return err
+			}
+		}
+	} else {
+		historyDDLs, err := r.loadHistoryDDLJobs(beginTS)
+		if err != nil {
+			return errors.Annotate(err, "load history ddls")
+		}
+		err = ddlHandle.ExecuteHistoryDDLs(historyDDLs)
+		if err != nil {
+			return errors.Trace(err)
+		}
+	}
+
+	return nil
+}
+
 func isAcceptableBinlog(binlog *pb.Binlog, startTs, endTs int64) bool {
 	return binlog.CommitTs >= startTs && (endTs == 0 || binlog.CommitTs <= endTs)
 }
@@ -93,6 +135,7 @@ func (r *PITR) loadHistoryDDLJobs(beginTS int64) ([]*model.Job, error) {
 	if len(r.cfg.PDURLs) == 0 {
 		return nil, nil
 	}
+
 	tiStore, err := createTiStore(r.cfg.PDURLs)
 	if err != nil {
 		return nil, errors.Trace(err)
