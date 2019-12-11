@@ -1,0 +1,14 @@
+language: go
+
+go:
+  - "1.11"
+
+dist:
+    xenial
+
+env:
+  - GO111MODULE=on
+
+script:
+  - make
+  - make integration_test
