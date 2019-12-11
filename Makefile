@@ -49,6 +49,8 @@ test:
 	@export log_level=error;\
 	$(GOTEST) -cover -covermode=count -coverprofile="$(TEST_DIR)/cov.unit.out" $(PACKAGES)
 
+integration_test:
+	sh tests/run.sh
 
 fmt:
 	@echo "gofmt (simplify)"
