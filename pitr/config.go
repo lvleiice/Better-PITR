@@ -16,6 +16,7 @@ import (
 	"github.com/pingcap/tidb-binlog/pkg/version"
 	"github.com/pingcap/tidb/store/tikv/oracle"
 	"go.uber.org/zap"
+	"math"
 )
 
 const (
@@ -127,15 +128,20 @@ func (c *Config) Parse(args []string) (err error) {
 		if err != nil {
 			return errors.Trace(err)
 		}
-
 		log.Info("Parsed start TSO", zap.Int64("ts", c.StartTSO))
+	} else if c.StartTSO == 0 {
+		log.Info("Start TSO is set to 0 automatically", zap.Int64("ts", 0))
 	}
+
 	if c.StopDatetime != "" {
 		c.StopTSO, err = dateTimeToTSO(c.StopDatetime)
 		if err != nil {
 			return errors.Trace(err)
 		}
 		log.Info("Parsed stop TSO", zap.Int64("ts", c.StopTSO))
+	} else if c.StopTSO == 0 {
+		c.StopTSO = math.MaxInt64
+		log.Info("Stop TSO is set to MaxInt64 automatically", zap.Int64("ts", math.MaxInt64))
 	}
 
 	return errors.Trace(c.validate())
