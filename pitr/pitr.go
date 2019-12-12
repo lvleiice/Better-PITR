@@ -42,12 +42,18 @@ func New(cfg *Config) (*PITR, error) {
 func (r *PITR) Process() error {
 	files, err := searchFiles(r.cfg.Dir)
 	if err != nil {
-		return errors.Annotate(err, "searchFiles failed")
+		return errors.Annotate(err, fmt.Sprintf("search files in directory %s failed", r.cfg.Dir))
+	}
+	if len(files) == 0 {
+		return errors.Annotate(err, fmt.Sprintf("no file is searched in directory %s", r.cfg))
 	}
 
 	files, fileSize, err := filterFiles(files, r.cfg.StartTSO, r.cfg.StopTSO)
 	if err != nil {
 		return errors.Annotate(err, "filterFiles failed")
+	}
+	if len(files) == 0 {
+		return errors.Annotate(err, fmt.Sprintf("no files remained between the time interval [%d, %d]", r.cfg.StartTSO, r.cfg.StopTSO))
 	}
 
 	firstBinlogTs := r.cfg.StartTSO
@@ -69,8 +75,12 @@ func (r *PITR) Process() error {
 		return errors.Annotate(err, "load history ddls")
 	}
 
-	if err := merge.Map(); err != nil {
+	noEventIsFound, err := merge.Map(firstBinlogTs, r.cfg.StopTSO)
+	if err != nil {
 		return errors.Trace(err)
+	} else if noEventIsFound {
+		log.Info(fmt.Sprintf("no event is found between [%d, %d]", firstBinlogTs, r.cfg.StopTSO))
+		return nil
 	}
 
 	err = r.ExecuteHistoryDDLs(firstBinlogTs)

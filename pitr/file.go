@@ -68,11 +68,12 @@ func filterFiles(fileNames []string, startTS int64, endTS int64) ([]string, int6
 	}
 	appendFile()
 
-	log.Info("after filter files",
-		zap.Strings("files", binlogFiles),
-		zap.Int64("all file's size", allFileSize),
+	log.Info("after filtering files",
 		zap.Int64("start tso", startTS),
-		zap.Int64("stop tso", endTS))
+		zap.Int64("stop tso", endTS),
+		zap.Int64("total number", int64(len(binlogFiles))),
+		zap.Int64("total size", allFileSize),
+		zap.Strings("files", binlogFiles))
 	return binlogFiles, allFileSize, nil
 }
 

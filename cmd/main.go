@@ -14,6 +14,7 @@
 package main
 
 import (
+	"go.uber.org/zap"
 	"math/rand"
 	"os"
 	"os/signal"
@@ -23,11 +24,10 @@ import (
 
 	_ "net/http/pprof"
 
+	"github.com/lvleiice/Better-PITR/pitr"
 	"github.com/pingcap/log"
 	"github.com/pingcap/tidb-binlog/pkg/util"
 	"github.com/pingcap/tidb-binlog/pkg/version"
-	"github.com/tsthght/PITR/pitr"
-	"go.uber.org/zap"
 )
 
 func main() {
@@ -58,7 +58,7 @@ func main() {
 
 	go func() {
 		sig := <-sc
-		log.Info("got signal to exit.", zap.Stringer("signale", sig))
+		log.Info("got signal to exit.", zap.Stringer("signal", sig))
 		r.Close()
 		os.Exit(0)
 	}()
