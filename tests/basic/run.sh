@@ -19,7 +19,8 @@ echo "use pitr to compress binlog file"
 ls -l /$OUT_DIR/drainer || true
 pitr -data-dir $OUT_DIR/drainer -output-dir $OUT_DIR/new_binlog > ${OUT_DIR-/tmp}/pitr.log 2>&1
 
-ls -l /$OUT_DIR/drainer || true
+cat ${OUT_DIR-/tmp}/pitr.log
+
 ls -l /$OUT_DIR/ || true
 ls -l /$OUT_DIR/new_binlog || true
 
