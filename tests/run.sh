@@ -134,18 +134,10 @@ run_case() {
     sh "$script"
 }
 
-# List the case names to run, eg. ("binlog" "kafka")
-do_cases=()
-
 if [ ${#do_cases[@]} -eq 0 ]; then
     for script in ./*/run.sh; do
         test_name="$(basename "$(dirname "$script")")"
         run_case $test_name $script
-    done
-else
-    for case in "${do_cases[@]}"; do
-        script="./$case/run.sh"
-        run_case $case $script
     done
 fi
 
