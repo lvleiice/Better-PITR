@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	tidblite "github.com/WangXiangUSTC/tidb-lite"
+	"github.com/WangXiangUSTC/tidb-lite"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/log"
 	"github.com/pingcap/parser"
