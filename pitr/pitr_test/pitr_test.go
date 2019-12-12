@@ -1,4 +1,4 @@
-package pitr
+package pitr_test
 
 import (
 	"database/sql"
@@ -7,6 +7,7 @@ import (
 	"time"
 
 	. "github.com/WangXiangUSTC/tidb-lite"
+	"github.com/lvleiice/Better-PITR/pitr"
 	. "github.com/pingcap/check"
 )
 
@@ -14,7 +15,7 @@ func TestPITR(t *testing.T) {
 	TestingT(t)
 }
 
-var _ = Suite(&testPITRSuite{})
+var _ = SerialSuites(&testPITRSuite{})
 
 type testPITRSuite struct{}
 
@@ -44,7 +45,7 @@ func (t *testPITRSuite) TestPITRDDL(c *C) {
 		}
 	}
 	// get ddl history job slice.
-	snapMeta, err := getSnapshotMeta(tidbServer1.GetStorage())
+	snapMeta, err := pitr.GetSnapshotMeta(tidbServer1.GetStorage())
 	c.Assert(err, IsNil)
 	allJobs, err := snapMeta.GetAllHistoryDDLJobs()
 	c.Assert(err, IsNil)
@@ -98,12 +99,13 @@ func (t *testPITRSuite) TestPITRDDL(c *C) {
 	// fmt.Println(dbMap)
 
 	// scan the ddl job list summarise the latest DBInfo and TableInfo.
-	dHanle := &DDLHandle{tidbServer:tidbServer1, historyDDLs:allJobs, accelerateEnable:true}
+	dHanle := &pitr.DDLHandle{}
+	dHanle.SetServerHistoryAccelerate(tidbServer1, allJobs, true)
 	for _, job := range allJobs {
 		err = dHanle.AccelerateHistoryDDLs(job)
 		c.Assert(err, IsNil)
 	}
-	err = dHanle.shiftMetaToTiDB()
+	err = dHanle.ShiftMetaToTiDB()
 	c.Assert(err, IsNil)
 
 	// check the meta(show create table) equal to origin output.

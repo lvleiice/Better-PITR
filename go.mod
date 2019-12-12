@@ -7,8 +7,8 @@ require (
 	github.com/WangXiangUSTC/tidb-lite v0.0.0-20190718135959-4a72c54defd9
 	github.com/cznic/mathutil v0.0.0-20181122101859-297441e03548
 	github.com/cznic/sortutil v0.0.0-20181122101858-f5f958428db8 // indirect
-	github.com/opentracing/opentracing-go v1.1.0 // indirect
 	github.com/juju/errors v0.0.0-20190930114154-d42613fe1ab9 // indirect
+	github.com/opentracing/opentracing-go v1.1.0 // indirect
 	github.com/pingcap/check v0.0.0-20191107115940-caf2b9e6ccf4
 	github.com/pingcap/errors v0.11.4
 	github.com/pingcap/log v0.0.0-20191012051959-b742a5d432e9
@@ -22,9 +22,9 @@ require (
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/uber/jaeger-client-go v2.19.0+incompatible // indirect
 	github.com/uber/jaeger-lib v2.2.0+incompatible // indirect
-	gopkg.in/stretchr/testify.v1 v1.2.2 // indirect
 	github.com/zanmato1984/clickhouse v1.3.4-0.20181106115746-3e9a6b9beb12 // indirect
 	go.uber.org/zap v1.12.0
+	gopkg.in/stretchr/testify.v1 v1.2.2 // indirect
 	gotest.tools v2.2.0+incompatible
 )
 

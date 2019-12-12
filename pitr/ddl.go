@@ -559,11 +559,17 @@ func skipJob(job *model.Job) bool {
 	return !job.IsSynced() && !job.IsDone()
 }
 
-func (d *DDLHandle) shiftMetaToTiDB() error {
+func (d *DDLHandle) ShiftMetaToTiDB() error {
 	var DBInfos []*model.DBInfo
 	d.lastDBInfoMap.Range(func (key, value interface{}) bool {
 		DBInfos = append(DBInfos, value.(*model.DBInfo))
 		return true
 	})
 	return d.tidbServer.SetDBInfoMeta(DBInfos)
+}
+
+func (d *DDLHandle) SetServerHistoryAccelerate(server *tidblite.TiDBServer, jobs []*model.Job, ac bool) {
+	d.tidbServer = server
+	d.historyDDLs = jobs
+	d.accelerateEnable = ac
 }
