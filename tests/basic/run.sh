@@ -6,7 +6,7 @@ cd "$(dirname "$0")"
 
 down_run_sql "DROP DATABASE IF EXISTS pitr_basic"
 
-rm -rf /tmp/tidb_binlog_pitr_test/data.drainer
+rm -rf /tmp/tidb_binlog_pitr_test/drainer/
 
 GO111MODULE=on go build -o generate_data
 
@@ -16,13 +16,12 @@ echo "generate data in TiDB"
 ./generate_data -config ./config/generate_data.toml > ${OUT_DIR-/tmp}/$TEST_NAME.out 2>&1
 
 echo "use pitr to compress binlog file"
-
-sleep 60
-
+ls -l /$OUT_DIR/drainer || true
 pitr -data-dir $OUT_DIR/drainer > ${OUT_DIR-/tmp}/pitr.log 2>&1
 
-ls -l ./$OUT_DIR/
-ls -l ./$OUT_DIR/new_binlog
+ls -l /$OUT_DIR/drainer
+ls -l /$OUT_DIR/ || true
+ls -l /$OUT_DIR/new_binlog || true
 
 for data_dir in ./$OUT_DIR/new_binlog; do
     echo "use reparo replay data under ${data_dif}"
