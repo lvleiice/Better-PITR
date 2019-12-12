@@ -134,12 +134,10 @@ run_case() {
     sh "$script"
 }
 
-if [ ${#do_cases[@]} -eq 0 ]; then
-    for script in ./*/run.sh; do
-        test_name="$(basename "$(dirname "$script")")"
-        run_case $test_name $script
-    done
-fi
+for script in ./*/run.sh; do
+    test_name="$(basename "$(dirname "$script")")"
+    run_case $test_name $script
+done
 
 # with color
 echo "\033[0;36m<<< Run all test success >>>\033[0m"
