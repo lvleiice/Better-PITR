@@ -23,9 +23,9 @@ ls -l /$OUT_DIR/drainer || true
 ls -l /$OUT_DIR/ || true
 ls -l /$OUT_DIR/new_binlog || true
 
-for data_dir in /$OUT_DIR/new_binlog; do
-    echo "use reparo replay data under ${data_dif}"
-    reparo -config ./config/reparo.toml -data-dir ${data_dir} >> ${OUT_DIR-/tmp}/reparo.log 2&>1
+for data_dir in `ls /$OUT_DIR/new_binlog`; do
+    echo "use reparo replay data under ${data_dir}"
+    reparo -config ./config/reparo.toml -data-dir /$OUT_DIR/new_binlog/${data_dir} >> ${OUT_DIR-/tmp}/reparo.log 2>&1
 done
 
 check_data ./config/sync_diff_inspector.toml 
