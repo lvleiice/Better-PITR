@@ -16,14 +16,20 @@ echo "generate data in TiDB"
 ./generate_data -config ./config/generate_data.toml > ${OUT_DIR-/tmp}/$TEST_NAME.out 2>&1
 
 echo "use pitr to compress binlog file"
-pitr -data-dir $OUT_DIR/drainer > ${OUT_DIR-/tmp}/pitr.log 2&>1
- 
-for data_dir in ./new_binlog; do
+
+sleep 60
+
+pitr -data-dir $OUT_DIR/drainer > ${OUT_DIR-/tmp}/pitr.log 2>&1
+
+ls -l ./$OUT_DIR/
+ls -l ./$OUT_DIR/new_binlog
+
+for data_dir in ./$OUT_DIR/new_binlog; do
     echo "use reparo replay data under ${data_dif}"
     reparo -config ./config/reparo.toml -data-dir ${data_dir} >> ${OUT_DIR-/tmp}/reparo.log 2&>1
 done
 
-check_data ./sync_diff_inspector.toml 
+check_data ./config/sync_diff_inspector.toml 
 
 # clean up
 run_sql "DROP DATABASE IF EXISTS \`pitr_basic\`"
