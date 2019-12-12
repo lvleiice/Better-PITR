@@ -50,6 +50,13 @@ unit_test:
 	$(GOTEST) -cover -covermode=count -coverprofile="$(TEST_DIR)/cov.unit.out" $(PACKAGES)
 
 integration_test:
+	@which bin/tidb-server
+	@which bin/tikv-server
+	@which bin/pd-server
+	@which bin/sync_diff_inspector
+	@which bin/drainer
+	@which bin/pump
+	@which bin/reparo
 	sh tests/run.sh
 
 fmt:
