@@ -4,29 +4,28 @@ set -e
 
 cd "$(dirname "$0")"
 
-# use latest ts as initial-commit-ts, so we can skip binlog by previous test case
-args="-initial-commit-ts=-1"
-down_run_sql "DROP DATABASE IF EXISTS tidb_binlog"
+down_run_sql "DROP DATABASE IF EXISTS pitr_basic"
 
 rm -rf /tmp/tidb_binlog_pitr_test/data.drainer
 
-run_drainer "$args" &
+GO111MODULE=on go build -o generate_data
 
-GO111MODULE=on go build -o out
+run_sql "CREATE DATABASE IF NOT EXISTS \`pitr_basic\`"
 
-run_sql "CREATE DATABASE IF NOT EXISTS \`reparo_test\`"
+echo "generate data in TiDB"
+./generate_data -config ./config/generate_data.toml > ${OUT_DIR-/tmp}/$TEST_NAME.out 2>&1
 
-./out -config ./config.toml > ${OUT_DIR-/tmp}/$TEST_NAME.out 2>&1
-
-sleep 5
-
-run_reparo &
-
-sleep 15
+echo "use pitr to compress binlog file"
+pitr -data-dir $OUT_DIR/drainer > ${OUT_DIR-/tmp}/pitr.log 2&>1
+ 
+for data_dir in ./new_binlog; do
+    echo "use reparo replay data under ${data_dif}"
+    reparo -config ./config/reparo.toml -data-dir ${data_dir} >> ${OUT_DIR-/tmp}/reparo.log 2&>1
+done
 
 check_data ./sync_diff_inspector.toml 
 
 # clean up
-run_sql "DROP DATABASE IF EXISTS \`reparo_test\`"
+run_sql "DROP DATABASE IF EXISTS \`pitr_basic\`"
 
 killall drainer

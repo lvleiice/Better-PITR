@@ -36,7 +36,7 @@ start_upstream_tidb() {
     tidb-server \
         -P $port \
         --store tikv \
-        --path 127.0.0.1:2979 \
+        --path 127.0.0.1:2379 \
         --enable-binlog=true \
         --log-file "$OUT_DIR/tidb.log" &
 
@@ -59,12 +59,12 @@ start_services() {
 
     echo "Starting PD..."
     pd-server \
-        --client-urls http://127.0.0.1:2979 \
+        --client-urls http://127.0.0.1:2379 \
         --log-file "$OUT_DIR/pd.log" \
         --data-dir "$OUT_DIR/pd" &
 
     # wait until PD is online...
-    while ! curl -o /dev/null -sf http://127.0.0.1:2979/pd/api/v1/version; do
+    while ! curl -o /dev/null -sf http://127.0.0.1:2379/pd/api/v1/version; do
         sleep 1
     done
 
@@ -81,8 +81,8 @@ EOF
 
     echo "Starting TiKV..."
     tikv-server \
-        --pd 127.0.0.1:2979 \
-        -A 127.0.0.1:29160 \
+        --pd 127.0.0.1:2379 \
+        -A 127.0.0.1:20160 \
         --log-file "$OUT_DIR/tikv.log" \
         -C "$OUT_DIR/tikv-config.toml" \
         -s "$OUT_DIR/tikv" &
@@ -140,7 +140,7 @@ do_cases=()
 if [ ${#do_cases[@]} -eq 0 ]; then
     for script in ./*/run.sh; do
         test_name="$(basename "$(dirname "$script")")"
-        #run_case $test_name $script
+        run_case $test_name $script
     done
 else
     for case in "${do_cases[@]}"; do
@@ -151,8 +151,3 @@ fi
 
 # with color
 echo "\033[0;36m<<< Run all test success >>>\033[0m"
-
-
-pitr -data-dir ./tests/test_binlog > pitr.log
-
-cat pitr.log

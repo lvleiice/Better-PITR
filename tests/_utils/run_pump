@@ -11,7 +11,7 @@ while :
 do
         pump_num=`ps aux > temp && grep "pump -log-file ${OUT_DIR}/pump_${PORT}.log" temp | wc -l && rm temp`
         if [ $pump_num -ne 0 ]; then
-                binlogctl -pd-urls 127.0.0.1:2979 -cmd pause-pump -node-id pump:$PORT || true
+                binlogctl -pd-urls 127.0.0.1:2379 -cmd pause-pump -node-id pump:$PORT || true
                 sleep 1
         else
                 break
@@ -22,6 +22,6 @@ echo "[$(date)] <<<<<< RUNNING pump  >>>>>>" >> "$OUT_DIR/pump_$PORT.log"
 
 BINLOG_TEST=1 pump -log-file $OUT_DIR/pump_$PORT.log --addr=0.0.0.0:$PORT \
         --advertise-addr=127.0.0.1:$PORT \
-        --pd-urls=http://127.0.0.1:2979 \
+        --pd-urls=http://127.0.0.1:2379 \
         --data-dir=$OUT_DIR/pump_$PORT \
         --node-id=pump:$PORT >> $OUT_DIR/pump_$PORT.log 2>&1

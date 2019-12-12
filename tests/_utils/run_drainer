@@ -16,7 +16,10 @@ do
         fi
 done
 
-config=${TEST_DIR-.}/drainer.toml
+config=${TEST_DIR-.}/config/drainer.toml
+
+echo $(pwd)
+echo $config
 
 echo "[$(date)] <<<<<< START IN TEST ${TEST_NAME-} FOR: $config >>>>>>" >> "$OUT_DIR/drainer.log"
 
@@ -24,5 +27,5 @@ if [ -f "$config" ]
 then
 	drainer -log-file $OUT_DIR/drainer.log -config $config $* >> $OUT_DIR/drainer.log 2>&1
 else
-	drainer -log-file $OUT_DIR/drainer.log $* >> $OUT_DIR/drainer.log 2>&1
+	drainer -log-file $OUT_DIR/drainer.log -data-dir $OUT_DIR/drainer/ -dest-db-type file -pd-urls http://127.0.0.1:2379 $* >> $OUT_DIR/drainer.log 2>&1
 fi
