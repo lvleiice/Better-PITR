@@ -21,9 +21,9 @@ import (
 
 // historyDDLHandler handles the DDL works we need to do before compressing to
 // binlog file, it'll prepare the schema at StartTSO.
-// Note: at most one of `ddlSQL` and `ddlJobs` will be not nil.
+// Note: at most one of `ddlSQLs` and `ddlJobs` will be not nil.
 type historyDDLHandler struct {
-	ddlSQL  []string
+	ddlSQLs []string
 	ddlJobs []*model.Job
 }
 
@@ -31,7 +31,7 @@ func (h *historyDDLHandler) execute() (err error) {
 	if len(h.ddlJobs) != 0 {
 		return ddlHandle.ExecuteHistoryDDLs(h.ddlJobs)
 	}
-	for _, ddl := range h.ddlSQL {
+	for _, ddl := range h.ddlSQLs {
 		err = ddlHandle.ExecuteDDL("", ddl)
 		if err != nil {
 			return err
@@ -200,7 +200,7 @@ func getSnapshotMeta(tiStore kv.Storage) (*meta.Meta, error) {
 func (r *PITR) fetchDDLBeforeStartTSO(startTSO int64) (historyDDLs historyDDLHandler, err error) {
 	switch {
 	case len(r.cfg.schemaFile) != 0:
-		historyDDLs.ddlSQL, err = r.LoadBaseSchema()
+		historyDDLs.ddlSQLs, err = r.LoadBaseSchema()
 	case len(r.cfg.PDURLs) != 0:
 		historyDDLs.ddlJobs, err = r.loadHistoryDDLJobs(startTSO)
 		err = errors.Annotate(err, "load history ddls")
