@@ -58,7 +58,7 @@ func (r *PITR) Process() error {
 		}
 	}
 
-	merge, err := NewMerge(files, fileSize)
+	merge, err := NewMerge(files, fileSize, r.cfg.OutputDir)
 	if err != nil {
 		return errors.Trace(err)
 	}

@@ -27,8 +27,7 @@ const (
 )
 
 var (
-	defaultTempDir   string = "./temp"
-	defaultOutputDir string = "./new_binlog"
+	defaultTempDir string = "./temp"
 
 	// used for handle ddl, and update table info
 	ddlHandle *DDLHandle
@@ -52,7 +51,7 @@ type Merge struct {
 }
 
 // NewMerge returns a new Merge
-func NewMerge(binlogFiles []string, allFileSize int64) (*Merge, error) {
+func NewMerge(binlogFiles []string, allFileSize int64, outputDut string) (*Merge, error) {
 	err := os.Mkdir(defaultTempDir, 0700)
 	if err != nil {
 		return nil, err
@@ -71,7 +70,7 @@ func NewMerge(binlogFiles []string, allFileSize int64) (*Merge, error) {
 	}
 	return &Merge{
 		tempDir:     defaultTempDir,
-		outputDir:   defaultOutputDir,
+		outputDir:   outputDut,
 		binlogFiles: binlogFiles,
 		splitNum:    snum,
 	}, nil

@@ -17,13 +17,13 @@ echo "generate data in TiDB"
 
 echo "use pitr to compress binlog file"
 ls -l /$OUT_DIR/drainer || true
-pitr -data-dir $OUT_DIR/drainer > ${OUT_DIR-/tmp}/pitr.log 2>&1
+pitr -data-dir $OUT_DIR/drainer -output-dir $OUT_DIR/new_binlog > ${OUT_DIR-/tmp}/pitr.log 2>&1
 
-ls -l /$OUT_DIR/drainer
+ls -l /$OUT_DIR/drainer || true
 ls -l /$OUT_DIR/ || true
 ls -l /$OUT_DIR/new_binlog || true
 
-for data_dir in ./$OUT_DIR/new_binlog; do
+for data_dir in /$OUT_DIR/new_binlog; do
     echo "use reparo replay data under ${data_dif}"
     reparo -config ./config/reparo.toml -data-dir ${data_dir} >> ${OUT_DIR-/tmp}/reparo.log 2&>1
 done

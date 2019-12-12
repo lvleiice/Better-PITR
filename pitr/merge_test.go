@@ -57,7 +57,7 @@ func TestMapFunc1(t *testing.T) {
 	files, fileSize, err := filterFiles(files, 0, 300)
 	assert.Assert(t, err == nil)
 
-	merge, err := NewMerge(files, fileSize)
+	merge, err := NewMerge(files, fileSize, defaultOutputDir)
 	assert.Assert(t, err == nil)
 
 	err = merge.Map()

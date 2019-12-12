@@ -21,12 +21,15 @@ import (
 const (
 	toolName   = "tidb-binlog-pitr"
 	timeFormat = "2006-01-02 15:04:05"
+
+	defaultOutputDir string = "./new_binlog"
 )
 
 // Config is the main configuration for the retore tool.
 type Config struct {
 	*flag.FlagSet `toml:"-" json:"-"`
 	Dir           string `toml:"data-dir" json:"data-dir"`
+	OutputDir     string `toml:"output-dir" json:"output-dir"`
 	StartDatetime string `toml:"start-datetime" json:"start-datetime"`
 	StopDatetime  string `toml:"stop-datetime" json:"stop-datetime"`
 	StartTSO      int64  `toml:"start-tso" json:"start-tso"`
@@ -61,6 +64,7 @@ func NewConfig() *Config {
 		fs.PrintDefaults()
 	}
 	fs.StringVar(&c.Dir, "data-dir", "", "drainer data directory path")
+	fs.StringVar(&c.OutputDir, "output-dir", defaultOutputDir, "output directory path")
 	fs.StringVar(&c.StartDatetime, "start-datetime", "", "recovery from start-datetime, empty string means starting from the beginning of the first file")
 	fs.StringVar(&c.StopDatetime, "stop-datetime", "", "recovery end in stop-datetime, empty string means never end.")
 	fs.Int64Var(&c.StartTSO, "start-tso", 0, "similar to start-datetime but in pd-server tso format")

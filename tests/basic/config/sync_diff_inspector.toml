@@ -22,7 +22,7 @@ tidb-instance-id = "source-1"
 use-checksum=true
 
 [[check-tables]]
-schema = "pirt_basic"
+schema = "pitr_basic"
 tables = ["~.*"]
 
 [target-db]
