@@ -101,7 +101,6 @@ func (r *PITR) loadHistoryDDLJobs(beginTS int64) ([]*model.Job, error) {
 	}
 	defer func() {
 		tiStore.Close()
-		store.UnRegister("tikv")
 	}()
 
 	snapMeta, err := getSnapshotMeta(tiStore)
