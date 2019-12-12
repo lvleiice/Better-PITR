@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"math"
 	"os"
 	"strings"
 	"time"
@@ -16,7 +17,6 @@ import (
 	"github.com/pingcap/tidb-binlog/pkg/version"
 	"github.com/pingcap/tidb/store/tikv/oracle"
 	"go.uber.org/zap"
-	"math"
 )
 
 const (

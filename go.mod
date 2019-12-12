@@ -6,7 +6,6 @@ require (
 	github.com/WangXiangUSTC/tidb-lite v0.0.0-20190718135959-4a72c54defd9
 	github.com/cznic/mathutil v0.0.0-20181122101859-297441e03548
 	github.com/cznic/sortutil v0.0.0-20181122101858-f5f958428db8 // indirect
-	github.com/juju/errors v0.0.0-20190930114154-d42613fe1ab9 // indirect
 	github.com/opentracing/opentracing-go v1.1.0 // indirect
 	github.com/pingcap/check v0.0.0-20190102082844-67f458068fc8
 	github.com/pingcap/errors v0.11.4

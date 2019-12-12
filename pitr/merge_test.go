@@ -3,6 +3,7 @@ package pitr
 import (
 	"fmt"
 	"github.com/pingcap/parser/mysql"
+	"math"
 	"os"
 	"strings"
 	"testing"
@@ -11,7 +12,6 @@ import (
 	pb "github.com/pingcap/tidb-binlog/proto/binlog"
 	tb "github.com/pingcap/tipb/go-binlog"
 	"gotest.tools/assert"
-	"math"
 )
 
 func TestMapFunc1(t *testing.T) {
