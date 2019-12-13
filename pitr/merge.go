@@ -173,7 +173,7 @@ func (m *Merge) Map(beginTs, endTs int64) (noEventIsFound bool, _ error) {
 	}
 
 	ddlHandle.ResetDB()
-	return true, nil
+	return noEventIsFound, nil
 }
 
 // Reduce merge same keys binlog into one, and output to file
