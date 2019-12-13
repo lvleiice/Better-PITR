@@ -119,7 +119,7 @@ func (d *DDLHandle) ExecuteHistoryDDLs(historyDDLs []*model.Job) error {
  * create table A  -> statePublic tableInfo A:(a int, b int)
  * create table B  -> statePublic tableInfo B:(a char(1))
  * A add column c  -> statePublic tableInfo A:(a int, b int, c char(10))
- * A drop column c -> statePublic tableInfo A:(b int, c char(10))
+ * A drop column a -> statePublic tableInfo A:(b int, c char(10))
  * drop table B    -> stateNone tableInfo B:(a char(1))
  *
  * Every ddl job will record the final state and tableInfo after executed.
