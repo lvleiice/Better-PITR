@@ -14,6 +14,7 @@
 package main
 
 import (
+	"fmt"
 	"go.uber.org/zap"
 	"math/rand"
 	"os"
@@ -24,7 +25,6 @@ import (
 
 	_ "net/http/pprof"
 
-	"fmt"
 	"github.com/lvleiice/Better-PITR/pitr"
 	"github.com/pingcap/log"
 	"github.com/pingcap/tidb-binlog/pkg/util"
