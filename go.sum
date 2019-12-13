@@ -1,6 +1,8 @@
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 github.com/AilinKid/tidb-lite v0.0.0-20191212085837-d01cbe4ae89f h1:mrVeTnqh0zX7CAt0F48pXzAg9Bl7INYWY8932WcEFQY=
 github.com/AilinKid/tidb-lite v0.0.0-20191212085837-d01cbe4ae89f/go.mod h1:YhsvtIYYhFoRlW8a5NrJ/I1V38V/hZRVFsdEKS96++k=
+github.com/AilinKid/tidb-lite v0.0.0-20191213025239-d91ca42a9adf h1:0rJlX0ORDVbUwczA6+pXebwjUVOcnmBViuDfrbdgiJs=
+github.com/AilinKid/tidb-lite v0.0.0-20191213025239-d91ca42a9adf/go.mod h1:YhsvtIYYhFoRlW8a5NrJ/I1V38V/hZRVFsdEKS96++k=
 github.com/BurntSushi/toml v0.3.1 h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/DATA-DOG/go-sqlmock v1.3.0/go.mod h1:f/Ixk793poVmq4qj/V1dPUg2JEAKC73Q5eFN3EC/SaM=
