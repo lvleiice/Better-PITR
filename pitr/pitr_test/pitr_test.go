@@ -107,8 +107,6 @@ func (t *testPITRSuite) TestPITRDDL(c *C) {
 	}
 	err = dHanle.ShiftMetaToTiDB()
 	c.Assert(err, IsNil)
-	err = tidbServer1.GetDomain().Reload()
-	c.Assert(err, IsNil)
 
 	// check the meta(show create table) equal to origin output.
 	result, err = dbConn.Query("show databases")

@@ -28,4 +28,4 @@ require (
 	gotest.tools v2.2.0+incompatible
 )
 
-replace github.com/WangXiangUSTC/tidb-lite => github.com/AilinKid/tidb-lite v0.0.0-20191213025239-d91ca42a9adf
+replace github.com/WangXiangUSTC/tidb-lite => github.com/AilinKid/tidb-lite v0.0.0-20191213034755-cbf4c8f38501

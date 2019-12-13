@@ -565,14 +565,7 @@ func (d *DDLHandle) ShiftMetaToTiDB() error {
 		DBInfos = append(DBInfos, value.(*model.DBInfo))
 		return true
 	})
-	if err := d.tidbServer.SetDBInfoMeta(DBInfos); err != nil {
-		return err
-	}
-	// trigger TiDB reconstruct infoschema from meta.
-	if err := d.tidbServer.GetDomain().Reload(); err != nil {
-		return err
-	}
-	return nil
+	return d.tidbServer.SetDBInfoMetaAndReload(DBInfos)
 }
 
 func (d *DDLHandle) SetServerHistoryAccelerate(server *tidblite.TiDBServer, jobs []*model.Job, ac bool) {
