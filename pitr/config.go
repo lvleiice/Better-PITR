@@ -141,7 +141,7 @@ func (c *Config) Parse(args []string) (err error) {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("\nconfig:\ninputDataDir: %s\n[startDatetime, stopDatetime]=[%s,%s]\n[startTso, stopTso]=[%d,%d]\n\n", c.Dir, c.StartDatetime, c.StopDatetime, c.StartTSO, c.StopTSO)
+	fmt.Printf("\nconfig:\ninputDataDir: %s\noutputDataDir: %s\n[startDatetime, stopDatetime]=[%s,%s]\n[startTso, stopTso]=[%d,%d]\n\n", c.Dir, c.OutputDir, c.StartDatetime, c.StopDatetime, c.StartTSO, c.StopTSO)
 	return
 }
 

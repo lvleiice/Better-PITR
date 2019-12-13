@@ -77,5 +77,5 @@ func main() {
 		log.Fatal("close pitr failed", zap.Error(err))
 		os.Exit(1)
 	}
-	fmt.Printf("pitr process successfully, please check the outpur directory %s", cfg.LogFile)
+	fmt.Printf("pitr process successfully, please check the outpur directory %s", cfg.OutputDir)
 }
