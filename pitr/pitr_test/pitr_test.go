@@ -2,6 +2,7 @@ package pitr_test
 
 import (
 	"database/sql"
+	"fmt"
 	"sort"
 	"testing"
 	"time"
@@ -156,6 +157,9 @@ func (t *testPITRSuite) TestPITRDDL(c *C) {
 			result.Close()
 		}
 	}
+	fmt.Println("start")
+	result, err = dbConn.Query("drop schema test")
+	c.Assert(err, IsNil)
 }
 
 func shouldIgnoreDB(dbName string) bool {
