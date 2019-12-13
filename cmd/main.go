@@ -15,7 +15,6 @@ package main
 
 import (
 	"fmt"
-	"go.uber.org/zap"
 	"math/rand"
 	"os"
 	"os/signal"
@@ -26,7 +25,6 @@ import (
 	_ "net/http/pprof"
 
 	"github.com/lvleiice/Better-PITR/pitr"
-	"github.com/pingcap/log"
 	"github.com/pingcap/tidb-binlog/pkg/util"
 	"github.com/pingcap/tidb-binlog/pkg/version"
 )
@@ -37,6 +35,7 @@ func main() {
 
 	cfg := pitr.NewConfig()
 	if err := cfg.Parse(os.Args[1:]); err != nil {
+		fmt.Println("Check 'pitr --help' for helps.")
 		os.Exit(1)
 	}
 	if err := util.InitLogger(cfg.LogLevel, cfg.LogFile); err != nil {
@@ -55,8 +54,7 @@ func main() {
 
 	r, err := pitr.New(cfg)
 	if err != nil {
-		fmt.Printf("pitr process failed, please check the log file [%s] for detailed message.", cfg.LogFile)
-		log.Fatal("create pitr failed", zap.Error(err))
+		fmt.Printf("pitr process failed, please check the log file [%s] for detailed message.\n%s", cfg.LogFile, err.Error())
 		os.Exit(1)
 	}
 
@@ -68,13 +66,11 @@ func main() {
 	}()
 
 	if err := r.Process(); err != nil {
-		fmt.Printf("PITR failed, please check the log file [%s] for detailed message.", cfg.LogFile)
-		log.Error("pitr processing failed", zap.Error(err))
+		fmt.Printf("PITR failed, please check the log file [%s] for detailed message.\n%s", cfg.LogFile, err.Error())
 		os.Exit(1)
 	}
 	if err := r.Close(); err != nil {
-		fmt.Printf("pitr process failed, please check the log file [%s] for detailed message.", cfg.LogFile)
-		log.Fatal("close pitr failed", zap.Error(err))
+		fmt.Printf("pitr process failed, please check the log file [%s] for detailed message.\n%s", cfg.LogFile, err.Error())
 		os.Exit(1)
 	}
 	fmt.Printf("pitr process successfully, please check the outpur directory %s", cfg.OutputDir)
