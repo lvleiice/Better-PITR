@@ -24,6 +24,7 @@ import (
 
 	_ "net/http/pprof"
 
+	"fmt"
 	"github.com/lvleiice/Better-PITR/pitr"
 	"github.com/pingcap/log"
 	"github.com/pingcap/tidb-binlog/pkg/util"
@@ -36,12 +37,13 @@ func main() {
 
 	cfg := pitr.NewConfig()
 	if err := cfg.Parse(os.Args[1:]); err != nil {
-		log.Fatal("verifying flags failed. See 'pitr --help'.", zap.Error(err))
+		os.Exit(1)
+	}
+	if err := util.InitLogger(cfg.LogLevel, cfg.LogFile); err != nil {
+		fmt.Println("Failed to initialize log", err.Error())
+		os.Exit(1)
 	}
 
-	if err := util.InitLogger(cfg.LogLevel, cfg.LogFile); err != nil {
-		log.Fatal("Failed to initialize log", zap.Error(err))
-	}
 	version.PrintVersionInfo("PITR")
 
 	sc := make(chan os.Signal, 1)
@@ -53,20 +55,27 @@ func main() {
 
 	r, err := pitr.New(cfg)
 	if err != nil {
+		fmt.Printf("pitr process failed, please check the log file [%s] for detailed message.", cfg.LogFile)
 		log.Fatal("create pitr failed", zap.Error(err))
+		os.Exit(1)
 	}
 
 	go func() {
 		sig := <-sc
-		log.Info("got signal to exit.", zap.Stringer("signal", sig))
+		fmt.Println("got signal to exit. [signal=", sig, "]")
 		r.Close()
 		os.Exit(0)
 	}()
 
 	if err := r.Process(); err != nil {
+		fmt.Printf("PITR failed, please check the log file [%s] for detailed message.", cfg.LogFile)
 		log.Error("pitr processing failed", zap.Error(err))
+		os.Exit(1)
 	}
 	if err := r.Close(); err != nil {
+		fmt.Printf("pitr process failed, please check the log file [%s] for detailed message.", cfg.LogFile)
 		log.Fatal("close pitr failed", zap.Error(err))
+		os.Exit(1)
 	}
+	fmt.Printf("pitr process successfully, please check the outpur directory %s", cfg.LogFile)
 }
