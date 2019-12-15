@@ -6,6 +6,7 @@ import (
 	"path"
 	"bytes"
 	"strings"
+	"fmt"
 
 	"github.com/pingcap/check"
 	"github.com/BurntSushi/toml"
@@ -96,6 +97,9 @@ func TestParseFromValidConfigFile(t *testing.T) {
 
 	err = cfg.validate()
 	assert.Assert(t, err == nil)
+	cfgStr := cfg.String()
+	fmt.Println(cfgStr)
+	assert.Assert(t, len(cfgStr) != 0)
 }
 
 func TestDateTimeToTSO(t *testing.T) {

@@ -6,12 +6,10 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/pingcap/errors"
 	"github.com/pingcap/log"
-	"github.com/pingcap/tidb-binlog/pkg/filter"
 	"github.com/pingcap/tidb-binlog/pkg/flags"
 	"github.com/pingcap/tidb-binlog/pkg/util"
 	"github.com/pingcap/tidb-binlog/pkg/version"
@@ -37,12 +35,6 @@ type Config struct {
 	StopTSO       int64  `toml:"stop-tso" json:"stop-tso"`
 
 	PDURLs string `toml:"pd-urls" json:"pd-urls"`
-
-	DoTables []filter.TableName `toml:"replicate-do-table" json:"replicate-do-table"`
-	DoDBs    []string           `toml:"replicate-do-db" json:"replicate-do-db"`
-
-	IgnoreTables []filter.TableName `toml:"replicate-ignore-table" json:"replicate-ignore-table"`
-	IgnoreDBs    []string           `toml:"replicate-ignore-db" json:"replicate-ignore-db"`
 
 	LogFile  string `toml:"log-file" json:"log-file"`
 	LogLevel string `toml:"log-level" json:"log-level"`
@@ -120,7 +112,6 @@ func (c *Config) Parse(args []string) (err error) {
 	if len(c.FlagSet.Args()) > 0 {
 		return errors.Errorf("'%s' is not a valid flag", c.FlagSet.Arg(0))
 	}
-	c.adjustDoDBAndTable()
 
 	// replace with environment vars
 	if err := flags.SetFlagsFromEnv(toolName, c.FlagSet); err != nil {
@@ -149,16 +140,6 @@ func (c *Config) Parse(args []string) (err error) {
 	}
 
 	return errors.Trace(c.validate())
-}
-
-func (c *Config) adjustDoDBAndTable() {
-	for i := 0; i < len(c.DoTables); i++ {
-		c.DoTables[i].Table = strings.ToLower(c.DoTables[i].Table)
-		c.DoTables[i].Schema = strings.ToLower(c.DoTables[i].Schema)
-	}
-	for i := 0; i < len(c.DoDBs); i++ {
-		c.DoDBs[i] = strings.ToLower(c.DoDBs[i])
-	}
 }
 
 func (c *Config) configFromFile(path string) error {
