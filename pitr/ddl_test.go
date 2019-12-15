@@ -9,6 +9,7 @@ import (
 	"github.com/pingcap/parser"
 	"github.com/pingcap/parser/format"
 	"gotest.tools/assert"
+	"github.com/pingcap/parser/model"
 )
 
 func TestGetAllDatabaseNames(t *testing.T) {
@@ -53,9 +54,6 @@ func TestResetDB(t *testing.T) {
 	ns, err = ddl.getAllDatabaseNames()
 	assert.Assert(t, err == nil)
 	assert.Assert(t, len(ns) == 2)
-
-	err = ddl.ExecuteDDL("", sql)
-	assert.Assert(t, err != nil)
 
 	err = ddl.ResetDB()
 	assert.Assert(t, err == nil)
@@ -127,4 +125,128 @@ func TestFetchMapKeyFromDB(t *testing.T) {
 	key, err = ddl.fetchMapKeyFromDB("mt_dst")
 	assert.Assert(t, err == nil)
 	assert.Assert(t, strings.EqualFold("mt_src", key))
+}
+
+func TestSkipJob(t *testing.T) {
+	testCases := []struct {
+		job  *model.Job
+		isSkipJob  bool
+	} {
+		{
+			&model.Job{
+				State: model.JobStateSynced,
+			}, 
+			false,
+		}, {
+			&model.Job{
+				State: model.JobStateDone,
+			}, 
+			false,
+		}, {
+			&model.Job{
+				State: model.JobStateCancelling,
+			}, 
+			true,
+		},
+	}
+
+	for _, tc := range testCases {
+		isSkipJob := skipJob(tc.job)
+		assert.Assert(t, isSkipJob == tc.isSkipJob)
+	}
+	
+}
+
+func TestExecuteDDLs(t *testing.T) {
+	os.RemoveAll(defaultTiDBDir)
+	ddlHandle, err := NewDDLHandle()
+	fmt.Println(err)
+	assert.Assert(t, err == nil)
+
+	historyDDLs := []*model.Job{
+		{
+			Query: "create database unit_test",
+			State: model.JobStateDone,
+		}, {
+			Query: "create table unit_test.t1(id int)",
+			State: model.JobStateDone,
+		}, {
+			Query: "create table t2(id int)",
+			State: model.JobStateDone,
+			BinlogInfo: &model.HistoryInfo{
+				DBInfo: &model.DBInfo{
+					Name:  model.NewCIStr("unit_test"),
+				},
+			},
+		}, {
+			Query: "create table unit_test.t3(id int)",
+			State: model.JobStateCancelling,
+		},
+	}
+
+	err = ddlHandle.ExecuteHistoryDDLs(historyDDLs)
+	assert.Assert(t, err == nil)
+
+	err = ddlHandle.ExecuteDDL("", "create table ")
+	assert.Assert(t, err != nil)
+
+
+	err = ddlHandle.ExecuteDDL("", "create database unit_test")
+	fmt.Println(123456)
+	assert.Assert(t, err == nil)
+
+	tableInfo, err := ddlHandle.GetTableInfo("unit_test", "t1")
+	assert.Assert(t, err == nil)
+	assert.Assert(t, tableInfo.columns[0] == "id")
+
+	tableInfo, err = ddlHandle.GetTableInfo("unit_test", "t5")
+	assert.Assert(t, err != nil)
+}
+
+func TestParserSchemaTableFromDDL(t *testing.T) {
+	testCases := []struct {
+		ddl string
+		schema string
+		table string
+	} {
+		{
+			"truncate table test.t1",
+			"test",
+			"t1",
+		}, {
+			"alter table test.t1 add index a(id)",
+			"test",
+			"t1",
+		}, {
+			"alter table test.t1 drop index a",
+			"test",
+			"t1",
+		}, {
+			"rename table test.t1 to test.t2",
+			"test",
+			"t2",
+		}, {
+			"create index a on test.t1(id)",
+			"test",
+			"t1",
+		}, {
+			"drop index a on test.t1",
+			"test",
+			"t1",
+		},
+	}
+
+	for _, tc := range testCases {
+		schema, table, err := parserSchemaTableFromDDL(tc.ddl)
+		fmt.Println(123456)
+		fmt.Println(tc.ddl)
+		fmt.Println(err)
+		assert.Assert(t, err == nil)
+		assert.Assert(t, tc.schema == schema)
+		assert.Assert(t, tc.table == table)
+	}
+
+	invalidDDL := "use test; alter table test.t1 add index a(id), drop index a on test.t1"
+	_, _, err := parserSchemaTableFromDDL(invalidDDL)
+	assert.Assert(t, err != nil)
 }
