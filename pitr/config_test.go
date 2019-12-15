@@ -1,15 +1,15 @@
 package pitr
 
 import (
-	"io/ioutil"
-	"testing"
-	"path"
 	"bytes"
-	"strings"
 	"fmt"
+	"io/ioutil"
+	"path"
+	"strings"
+	"testing"
 
-	"github.com/pingcap/check"
 	"github.com/BurntSushi/toml"
+	"github.com/pingcap/check"
 	"gotest.tools/assert"
 )
 
@@ -60,13 +60,13 @@ func TestParseFromInvalidConfigFile(t *testing.T) {
 
 func TestParseFromValidConfigFile(t *testing.T) {
 	yc := struct {
-		Dir                    string `toml:"data-dir" json:"data-dir"`
-		StartDatetime          string `toml:"start-datetime" json:"start-datetime"`
-		StopDatetime           string `toml:"stop-datetime" json:"stop-datetime"`
-		StartTSO               int64  `toml:"start-tso" json:"start-tso"`
-		StopTSO                int64  `toml:"stop-tso" json:"stop-tso"`
-		LogFile                string `toml:"log-file" json:"log-file"`
-		LogLevel               string `toml:"log-level" json:"log-level"`
+		Dir           string `toml:"data-dir" json:"data-dir"`
+		StartDatetime string `toml:"start-datetime" json:"start-datetime"`
+		StopDatetime  string `toml:"stop-datetime" json:"stop-datetime"`
+		StartTSO      int64  `toml:"start-tso" json:"start-tso"`
+		StopTSO       int64  `toml:"stop-tso" json:"stop-tso"`
+		LogFile       string `toml:"log-file" json:"log-file"`
+		LogLevel      string `toml:"log-level" json:"log-level"`
 	}{
 		"/tmp/pitr",
 		"2006-01-02 15:04:05",

@@ -3,37 +3,37 @@ package pitr
 import (
 	"testing"
 
-	"gotest.tools/assert"
 	pb "github.com/pingcap/tidb-binlog/proto/binlog"
+	"gotest.tools/assert"
 )
 
 func TestMerge(t *testing.T) {
-	insertEvent := &Event {
+	insertEvent := &Event{
 		eventType: pb.EventType_Insert,
-		oldKey: "1",
-		cols: []*pb.Column {
+		oldKey:    "1",
+		cols: []*pb.Column{
 			{
 				Value: []byte("1"),
 			},
 		},
 	}
 
-	updateEvent := &Event {
+	updateEvent := &Event{
 		eventType: pb.EventType_Update,
-		oldKey: "1",
-		newKey: "2",
-		cols: []*pb.Column {
+		oldKey:    "1",
+		newKey:    "2",
+		cols: []*pb.Column{
 			{
-				Value: []byte("1"),
+				Value:        []byte("1"),
 				ChangedValue: []byte("2"),
 			},
 		},
 	}
 
-	deleteEvent := &Event {
+	deleteEvent := &Event{
 		eventType: pb.EventType_Delete,
-		oldKey: "2",
-		cols: []*pb.Column {
+		oldKey:    "2",
+		cols: []*pb.Column{
 			{
 				Value: []byte("2"),
 			},

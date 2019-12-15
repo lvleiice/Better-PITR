@@ -132,7 +132,7 @@ func (d *DDLHandle) ExecuteDDL(schema string, ddl string) error {
 			if len(schema) != 0 {
 				return d.ExecuteDDL(schema, fmt.Sprintf("use %s; %s", schema, ddl))
 			}
-		} else if strings.Contains(err.Error(), "already exists") || strings.Contains(err.Error(), "database exists"){
+		} else if strings.Contains(err.Error(), "already exists") || strings.Contains(err.Error(), "database exists") {
 			return nil
 		}
 

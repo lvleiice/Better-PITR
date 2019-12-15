@@ -8,8 +8,8 @@ import (
 
 	"github.com/pingcap/parser"
 	"github.com/pingcap/parser/format"
-	"gotest.tools/assert"
 	"github.com/pingcap/parser/model"
+	"gotest.tools/assert"
 )
 
 func TestGetAllDatabaseNames(t *testing.T) {
@@ -129,23 +129,23 @@ func TestFetchMapKeyFromDB(t *testing.T) {
 
 func TestSkipJob(t *testing.T) {
 	testCases := []struct {
-		job  *model.Job
-		isSkipJob  bool
-	} {
+		job       *model.Job
+		isSkipJob bool
+	}{
 		{
 			&model.Job{
 				State: model.JobStateSynced,
-			}, 
+			},
 			false,
 		}, {
 			&model.Job{
 				State: model.JobStateDone,
-			}, 
+			},
 			false,
 		}, {
 			&model.Job{
 				State: model.JobStateCancelling,
-			}, 
+			},
 			true,
 		},
 	}
@@ -154,7 +154,7 @@ func TestSkipJob(t *testing.T) {
 		isSkipJob := skipJob(tc.job)
 		assert.Assert(t, isSkipJob == tc.isSkipJob)
 	}
-	
+
 }
 
 func TestExecuteDDLs(t *testing.T) {
@@ -175,7 +175,7 @@ func TestExecuteDDLs(t *testing.T) {
 			State: model.JobStateDone,
 			BinlogInfo: &model.HistoryInfo{
 				DBInfo: &model.DBInfo{
-					Name:  model.NewCIStr("unit_test"),
+					Name: model.NewCIStr("unit_test"),
 				},
 			},
 		}, {
@@ -189,7 +189,6 @@ func TestExecuteDDLs(t *testing.T) {
 
 	err = ddlHandle.ExecuteDDL("", "create table ")
 	assert.Assert(t, err != nil)
-
 
 	err = ddlHandle.ExecuteDDL("", "create database unit_test")
 	fmt.Println(123456)
@@ -205,10 +204,10 @@ func TestExecuteDDLs(t *testing.T) {
 
 func TestParserSchemaTableFromDDL(t *testing.T) {
 	testCases := []struct {
-		ddl string
+		ddl    string
 		schema string
-		table string
-	} {
+		table  string
+	}{
 		{
 			"truncate table test.t1",
 			"test",
