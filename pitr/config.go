@@ -41,8 +41,6 @@ type Config struct {
 
 	reserveTempDir bool `toml:"reserve-tmpdir" json:"reserve-tmpdir"`
 
-	schemaFile string `toml:"schema-file" json:"schema-file"`
-
 	configFile   string
 	printVersion bool
 }
@@ -68,7 +66,6 @@ func NewConfig() *Config {
 	fs.StringVar(&c.PDURLs, "pd-urls", "", "a comma separated list of PD endpoints")
 	fs.BoolVar(&c.reserveTempDir, "reserve-tmpdir", false, "reserve temp dir")
 	fs.BoolVar(&c.printVersion, "V", false, "print pitr version info")
-	fs.StringVar(&c.schemaFile, "schema-file", "", "base schema info")
 	return c
 }
 
@@ -101,6 +98,7 @@ func (c *Config) Parse(args []string) (err error) {
 	if c.configFile != "" {
 		// Load config file if specified
 		if err := c.configFromFile(c.configFile); err != nil {
+			fmt.Println("read from config file failed")
 			return errors.Trace(err)
 		}
 	}
@@ -110,6 +108,7 @@ func (c *Config) Parse(args []string) (err error) {
 		return errors.Trace(err)
 	}
 	if len(c.FlagSet.Args()) > 0 {
+		fmt.Printf("'%s' is not a valid flag", c.FlagSet.Arg(0))
 		return errors.Errorf("'%s' is not a valid flag", c.FlagSet.Arg(0))
 	}
 
@@ -121,25 +120,29 @@ func (c *Config) Parse(args []string) (err error) {
 	if c.StartDatetime != "" {
 		c.StartTSO, err = dateTimeToTSO(c.StartDatetime)
 		if err != nil {
+			fmt.Printf("startDatetime %s can not be converted to timestamp oracle format", c.StartDatetime)
 			return errors.Trace(err)
 		}
-		log.Info("Parsed start TSO", zap.Int64("ts", c.StartTSO))
 	} else if c.StartTSO == 0 {
-		log.Info("Start TSO is set to 0 automatically", zap.Int64("ts", 0))
+		fmt.Println("Note: StartTSO is set to 0 automatically")
 	}
 
 	if c.StopDatetime != "" {
 		c.StopTSO, err = dateTimeToTSO(c.StopDatetime)
 		if err != nil {
+			fmt.Printf("stopDatetime %s can not be converted to timestamp oracle format", c.StopDatetime)
 			return errors.Trace(err)
 		}
-		log.Info("Parsed stop TSO", zap.Int64("ts", c.StopTSO))
 	} else if c.StopTSO == 0 {
 		c.StopTSO = math.MaxInt64
-		log.Info("Stop TSO is set to MaxInt64 automatically", zap.Int64("ts", math.MaxInt64))
+		fmt.Println("Note: Stop TSO is set to MaxInt64 automatically")
 	}
-
-	return errors.Trace(c.validate())
+	err = c.validate()
+	if err != nil {
+		return err
+	}
+	fmt.Printf("\nconfig:\ninputDataDir: %s\noutputDataDir: %s\n[startDatetime, stopDatetime]=[%s,%s]\n[startTso, stopTso]=[%d,%d]\n\n", c.Dir, c.OutputDir, c.StartDatetime, c.StopDatetime, c.StartTSO, c.StopTSO)
+	return
 }
 
 func (c *Config) configFromFile(path string) error {
@@ -148,6 +151,7 @@ func (c *Config) configFromFile(path string) error {
 
 func (c *Config) validate() error {
 	if c.Dir == "" {
+		fmt.Println("data-dir is empty")
 		return errors.New("data-dir is empty")
 	}
 
