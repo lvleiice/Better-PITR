@@ -191,7 +191,6 @@ func TestExecuteDDLs(t *testing.T) {
 	assert.Assert(t, err != nil)
 
 	err = ddlHandle.ExecuteDDL("", "create database unit_test")
-	fmt.Println(123456)
 	assert.Assert(t, err == nil)
 
 	tableInfo, err := ddlHandle.GetTableInfo("unit_test", "t1")
@@ -237,9 +236,6 @@ func TestParserSchemaTableFromDDL(t *testing.T) {
 
 	for _, tc := range testCases {
 		schema, table, err := parserSchemaTableFromDDL(tc.ddl)
-		fmt.Println(123456)
-		fmt.Println(tc.ddl)
-		fmt.Println(err)
 		assert.Assert(t, err == nil)
 		assert.Assert(t, tc.schema == schema)
 		assert.Assert(t, tc.table == table)

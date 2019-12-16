@@ -1,7 +1,6 @@
 package pitr
 
 import (
-	"fmt"
 	"os"
 	"testing"
 
@@ -20,7 +19,6 @@ func TestNewPitr(t *testing.T) {
 	assert.Assert(t, err == nil)
 
 	err = pitr.Process()
-	fmt.Println(err)
 	assert.Assert(t, err == nil)
 }
 
