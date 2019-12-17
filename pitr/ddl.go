@@ -52,7 +52,7 @@ type DDLHandle struct {
 
 	historyDDLs []*model.Job
 
-	lastDBInfoMap sync.Map
+	lastDBInfoMap map[string]*model.DBInfo
 
 	// whether try to accelerate ddl history process.
 	accelerateEnable bool
@@ -82,8 +82,10 @@ func NewDDLHandle() (*DDLHandle, error) {
 	}
 
 	ddlHandle := &DDLHandle{
-		db:         dbConn,
-		tidbServer: tidbServer,
+		db:               dbConn,
+		tidbServer:       tidbServer,
+		accelerateEnable: true,
+		lastDBInfoMap:    make(map[string]*model.DBInfo),
 	}
 
 	return ddlHandle, nil
@@ -129,44 +131,44 @@ func (d *DDLHandle) AccelerateHistoryDDLs(job *model.Job) error {
 	case model.ActionCreateSchema, model.ActionModifySchemaCharsetAndCollate, model.ActionDropSchema:
 		if job.BinlogInfo.DBInfo.State == model.StatePublic {
 			// Take if not exists into consideration, we will override there.
-			d.lastDBInfoMap.Store(quoteDB(job.BinlogInfo.DBInfo.Name.L), job.BinlogInfo.DBInfo)
+			d.lastDBInfoMap[quoteDB(job.BinlogInfo.DBInfo.Name.L)] = job.BinlogInfo.DBInfo
 		}
 		if job.BinlogInfo.DBInfo.State == model.StateNone {
-			d.lastDBInfoMap.Delete(quoteDB(job.BinlogInfo.DBInfo.Name.L))
+			delete(d.lastDBInfoMap, quoteDB(job.BinlogInfo.DBInfo.Name.L))
 		}
 		return nil
 	case model.ActionCreateTable, model.ActionCreateView, model.ActionDropTable, model.ActionDropView,
 		model.ActionDropTablePartition, model.ActionTruncateTablePartition, model.ActionAddColumn,
 		model.ActionDropColumn, model.ActionModifyColumn, model.ActionSetDefaultValue, model.ActionAddIndex,
-		model.ActionDropIndex, model.ActionRenameIndex,  model.ActionAddForeignKey, model.ActionDropForeignKey,
+		model.ActionDropIndex, model.ActionRenameIndex, model.ActionAddForeignKey, model.ActionDropForeignKey,
 		model.ActionTruncateTable, model.ActionRebaseAutoID, model.ActionRenameTable, model.ActionShardRowID,
 		model.ActionModifyTableComment, model.ActionAddTablePartition, model.ActionModifyTableCharsetAndCollate,
 		model.ActionRecoverTable:
 		if job.BinlogInfo.TableInfo.State == model.StatePublic {
-			v, ok := d.lastDBInfoMap.Load(quoteDB(strings.ToLower(job.SchemaName)))
+			v, ok := d.lastDBInfoMap[quoteDB(strings.ToLower(job.SchemaName))]
 			if !ok {
 				return errors.New(fmt.Sprintf("database %s haven't exist in ddl history before use it", job.SchemaName))
 			}
 			// substitute the latest tableInfo for the old one in lastDBInfoMap.
 			newTableInfo := job.BinlogInfo.TableInfo
-			for i, t := range v.(*model.DBInfo).Tables {
+			for i, t := range v.Tables {
 				if t.ID == newTableInfo.ID {
-					v.(*model.DBInfo).Tables[i] = newTableInfo
+					v.Tables[i] = newTableInfo
 					return nil
 				}
 			}
 			// the tableInfo maybe just created, add it in lastDBInfoMap.
-			v.(*model.DBInfo).Tables = append(v.(*model.DBInfo).Tables, newTableInfo)
+			v.Tables = append(v.Tables, newTableInfo)
 		} else if job.BinlogInfo.TableInfo.State == model.StateNone {
 			// stateNone means the table has been dropped, remove it in lastDBInfoMap.
-			v, ok := d.lastDBInfoMap.Load(quoteDB(strings.ToLower(job.SchemaName)))
+			v, ok := d.lastDBInfoMap[quoteDB(strings.ToLower(job.SchemaName))]
 			if !ok {
 				return errors.New(fmt.Sprintf("database %s haven't exist in ddl history before use it", job.SchemaName))
 			}
 			stateNoneTableInfo := job.BinlogInfo.TableInfo
-			for i, t := range v.(*model.DBInfo).Tables {
+			for i, t := range v.Tables {
 				if t.ID == stateNoneTableInfo.ID {
-					v.(*model.DBInfo).Tables = append(v.(*model.DBInfo).Tables[:i], v.(*model.DBInfo).Tables[i+1:]...)
+					v.Tables = append(v.Tables[:i], v.Tables[i+1:]...)
 					return nil
 				}
 			}
@@ -561,15 +563,15 @@ func skipJob(job *model.Job) bool {
 
 func (d *DDLHandle) ShiftMetaToTiDB() error {
 	var DBInfos []*model.DBInfo
-	d.lastDBInfoMap.Range(func (key, value interface{}) bool {
-		DBInfos = append(DBInfos, value.(*model.DBInfo))
-		return true
-	})
+	for _, v := range d.lastDBInfoMap {
+		DBInfos = append(DBInfos, v)
+	}
 	return d.tidbServer.SetDBInfoMetaAndReload(DBInfos)
 }
 
-func (d *DDLHandle) SetServerHistoryAccelerate(server *tidblite.TiDBServer, jobs []*model.Job, ac bool) {
+func (d *DDLHandle) SetServerHistoryAccelerate(server *tidblite.TiDBServer, jobs []*model.Job, m map[string]*model.DBInfo, ac bool) {
 	d.tidbServer = server
 	d.historyDDLs = jobs
+	d.lastDBInfoMap = m
 	d.accelerateEnable = ac
 }

@@ -2,7 +2,7 @@ package pitr_test
 
 import (
 	"database/sql"
-	"fmt"
+	"github.com/pingcap/parser/model"
 	"sort"
 	"testing"
 	"time"
@@ -59,13 +59,13 @@ func (t *testPITRSuite) TestPITRDDL(c *C) {
 	// show origin tables
 	result, err := dbConn.Query("show databases")
 	c.Assert(err, IsNil)
-	dbMap := make(map[string]map[string]string,0)
+	dbMap := make(map[string]map[string]string, 0)
 	var dbString sql.NullString
 	for result.Next() {
 		err := result.Scan(&dbString)
 		c.Assert(err, IsNil)
-		if dbString.Valid && !shouldIgnoreDB(dbString.String){
-			dbMap[dbString.String] = make(map[string]string,0)
+		if dbString.Valid && !shouldIgnoreDB(dbString.String) {
+			dbMap[dbString.String] = make(map[string]string, 0)
 		}
 	}
 	result.Close()
@@ -82,7 +82,7 @@ func (t *testPITRSuite) TestPITRDDL(c *C) {
 		}
 		result.Close()
 		for tk, _ := range dv {
-			result, err = dbConn.Query("show create table " + dk+"."+tk)
+			result, err = dbConn.Query("show create table " + dk + "." + tk)
 			c.Assert(err, IsNil)
 			var nameString sql.NullString
 			var createTableString sql.NullString
@@ -101,7 +101,8 @@ func (t *testPITRSuite) TestPITRDDL(c *C) {
 
 	// scan the ddl job list summarise the latest DBInfo and TableInfo.
 	dHanle := &pitr.DDLHandle{}
-	dHanle.SetServerHistoryAccelerate(tidbServer1, allJobs, true)
+	m := make(map[string]*model.DBInfo)
+	dHanle.SetServerHistoryAccelerate(tidbServer1, allJobs, m, true)
 	for _, job := range allJobs {
 		err = dHanle.AccelerateHistoryDDLs(job)
 		c.Assert(err, IsNil)
@@ -116,7 +117,7 @@ func (t *testPITRSuite) TestPITRDDL(c *C) {
 	for result.Next() {
 		err := result.Scan(&dbString)
 		c.Assert(err, IsNil)
-		if dbString.Valid && !shouldIgnoreDB(dbString.String){
+		if dbString.Valid && !shouldIgnoreDB(dbString.String) {
 			_, ok := dbMap[dbString.String]
 			c.Assert(ok, Equals, true)
 			dbs = append(dbs, dbString.String)
@@ -140,7 +141,7 @@ func (t *testPITRSuite) TestPITRDDL(c *C) {
 		}
 		result.Close()
 		for _, table := range tables {
-			result, err = dbConn.Query("show create table " + db+"."+table)
+			result, err = dbConn.Query("show create table " + db + "." + table)
 			c.Assert(err, IsNil)
 			var nameString sql.NullString
 			var createTableString sql.NullString
@@ -157,7 +158,6 @@ func (t *testPITRSuite) TestPITRDDL(c *C) {
 			result.Close()
 		}
 	}
-	fmt.Println("start")
 	result, err = dbConn.Query("drop schema test")
 	c.Assert(err, IsNil)
 }

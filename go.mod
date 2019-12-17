@@ -4,7 +4,9 @@ go 1.12
 
 require (
 	github.com/DataDog/zstd v1.3.6-0.20190409195224-796139022798 // indirect
-	github.com/WangXiangUSTC/tidb-lite v0.0.0-20190718135959-4a72c54defd9
+	github.com/WangXiangUSTC/tidb-lite v0.0.0-20191217032011-70d76f82e589
+	github.com/cespare/xxhash/v2 v2.1.1 // indirect
+	github.com/coreos/etcd v3.3.18+incompatible // indirect
 	github.com/cznic/mathutil v0.0.0-20181122101859-297441e03548
 	github.com/cznic/sortutil v0.0.0-20181122101858-f5f958428db8 // indirect
 	github.com/juju/errors v0.0.0-20190930114154-d42613fe1ab9 // indirect
@@ -27,7 +29,5 @@ require (
 	gopkg.in/stretchr/testify.v1 v1.2.2 // indirect
 	gotest.tools v2.2.0+incompatible
 )
-
-replace github.com/WangXiangUSTC/tidb-lite => github.com/AilinKid/tidb-lite v0.0.0-20191213125639-8b6dafe8c470
 
 replace github.com/pingcap/tidb => github.com/AilinKid/tidb v1.1.0-beta.0.20191213100648-826c5faecfb9
