@@ -22,7 +22,13 @@ type historyDDLHandler struct {
 }
 
 func (h *historyDDLHandler) execute() (err error) {
-	return ddlHandle.ExecuteHistoryDDLs(h.ddlJobs)
+	if err := ddlHandle.ExecuteHistoryDDLs(h.ddlJobs); err != nil {
+		return err
+	}
+	if ddlHandle.accelerateEnable {
+		return ddlHandle.ShiftMetaToTiDB()
+	}
+	return nil
 }
 
 // PITR is the main part of the merge binlog tool.
@@ -104,7 +110,7 @@ func (r *PITR) loadHistoryDDLJobs(beginTS int64) ([]*model.Job, error) {
 		store.UnRegister("tikv")
 	}()
 
-	snapMeta, err := getSnapshotMeta(tiStore)
+	snapMeta, err := GetSnapshotMeta(tiStore)
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
@@ -149,7 +155,7 @@ func createTiStore(urls string) (kv.Storage, error) {
 	return tiStore, nil
 }
 
-func getSnapshotMeta(tiStore kv.Storage) (*meta.Meta, error) {
+func GetSnapshotMeta(tiStore kv.Storage) (*meta.Meta, error) {
 	version, err := tiStore.CurrentVersion()
 	if err != nil {
 		return nil, errors.Trace(err)
