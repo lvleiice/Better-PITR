@@ -10,13 +10,13 @@ env:
   - GO111MODULE=on
 
 script:
-  - wget http://download.pingcap.org/tidb-toolkit-v3.0.5-linux-amd64.tar.gz
-  - wget http://download.pingcap.org/tidb-v3.0.5-linux-amd64.tar.gz
-  - tar zxvf tidb-toolkit-v3.0.5-linux-amd64.tar.gz
-  - tar zxvf tidb-v3.0.5-linux-amd64.tar.gz
+  - wget http://download.pingcap.org/tidb-toolkit-latest-linux-amd64.tar.gz
+  - wget http://download.pingcap.org/tidb-latest-linux-amd64.tar.gz
+  - tar zxvf tidb-toolkit-latest-linux-amd64.tar.gz
+  - tar zxvf tidb-latest-linux-amd64.tar.gz
   - mkdir bin || true
-  - mv tidb-toolkit-v3.0.5-linux-amd64/bin/* ./bin/
-  - mv tidb-v3.0.5-linux-amd64/bin/* ./bin/
+  - mv tidb-toolkit-latest-linux-amd64/bin/* ./bin/
+  - mv tidb-latest-linux-amd64/bin/* ./bin/
   - make
   - make unit_test
   - make integration_test
