@@ -199,6 +199,7 @@ func (d *DDLHandle) ExecuteDDL(schema string, ddl string) error {
 	}
 
 	if _, err := d.db.Exec(ddl); err != nil {
+		fmt.Println(err)
 		if strings.Contains(err.Error(), "Unknown database") {
 			err := d.ExecuteDDL(schema, fmt.Sprintf("create database if not exists `%s`", schema))
 			if err != nil {
@@ -210,7 +211,7 @@ func (d *DDLHandle) ExecuteDDL(schema string, ddl string) error {
 			if len(schema) != 0 {
 				return d.ExecuteDDL(schema, fmt.Sprintf("use %s; %s", schema, ddl))
 			}
-		} else if strings.Contains(err.Error(), "already exists") {
+		} else if strings.Contains(err.Error(), "already exists") || strings.Contains(err.Error(), "database exists") {
 			return nil
 		}
 
