@@ -1,0 +1,22 @@
+language: go
+
+go:
+  - "1.13"
+
+dist:
+    xenial
+
+env:
+  - GO111MODULE=on
+
+script:
+  - wget http://download.pingcap.org/tidb-toolkit-latest-linux-amd64.tar.gz
+  - wget http://download.pingcap.org/tidb-latest-linux-amd64.tar.gz
+  - tar zxvf tidb-toolkit-latest-linux-amd64.tar.gz
+  - tar zxvf tidb-latest-linux-amd64.tar.gz
+  - mkdir bin || true
+  - mv tidb-toolkit-latest-linux-amd64/bin/* ./bin/
+  - mv tidb-latest-linux-amd64/bin/* ./bin/
+  - make
+  - make unit_test
+  - make integration_test

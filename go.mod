@@ -1,6 +1,6 @@
 module github.com/lvleiice/Better-PITR
 
-go 1.12
+go 1.13
 
 require (
 	github.com/DataDog/zstd v1.3.6-0.20190409195224-796139022798 // indirect

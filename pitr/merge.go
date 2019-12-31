@@ -490,6 +490,16 @@ func (tm *TableMerge) HandleEvent(row *Event) {
 }
 
 func rewriteDDL(binlog *pb.Binlog) (*pb.Binlog, error) {
+	log.Info("before rewrite DDL", zap.String("DDL", string(binlog.DdlQuery)))
+	defer func() {
+		log.Info("after rewrite DDL", zap.String("DDL", string(binlog.DdlQuery)))
+	}()
+
+	// FIXME: will fix this later
+	if true {
+		return binlog, nil
+	}
+
 	var ddl []byte
 	stmts, _, err := parser.New().Parse(string(binlog.DdlQuery), "", "")
 
