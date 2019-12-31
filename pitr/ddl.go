@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	tidblite "github.com/WangXiangUSTC/tidb-lite"
+	"github.com/WangXiangUSTC/tidb-lite"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/log"
 	"github.com/pingcap/parser"
@@ -51,6 +51,11 @@ type DDLHandle struct {
 	tidbServer *tidblite.TiDBServer
 
 	historyDDLs []*model.Job
+
+	lastDBInfoMap map[string]*model.DBInfo
+
+	// whether try to accelerate ddl history process.
+	accelerateEnable bool
 }
 
 func NewDDLHandle() (*DDLHandle, error) {
@@ -77,8 +82,10 @@ func NewDDLHandle() (*DDLHandle, error) {
 	}
 
 	ddlHandle := &DDLHandle{
-		db:         dbConn,
-		tidbServer: tidbServer,
+		db:               dbConn,
+		tidbServer:       tidbServer,
+		accelerateEnable: true,
+		lastDBInfoMap:    make(map[string]*model.DBInfo),
 	}
 
 	return ddlHandle, nil
@@ -94,12 +101,84 @@ func (d *DDLHandle) ExecuteHistoryDDLs(historyDDLs []*model.Job) error {
 		if ddl.BinlogInfo != nil && ddl.BinlogInfo.DBInfo != nil {
 			schemaName = ddl.BinlogInfo.DBInfo.Name.O
 		}
-		err := d.ExecuteDDL(schemaName, ddl.Query)
-		if err != nil {
-			return errors.Trace(err)
+		if d.accelerateEnable {
+			if err := d.AccelerateHistoryDDLs(ddl); err != nil {
+				return errors.Trace(err)
+			}
+		} else {
+			if err := d.ExecuteDDL(schemaName, ddl.Query); err != nil {
+				return errors.Trace(err)
+			}
 		}
 	}
 
+	return nil
+}
+
+/*
+ * Scan the ddl history job slice, record the last state & tableInfo for every tableInfo.
+ * Example:
+ * create table A  -> statePublic tableInfo A:(a int, b int)
+ * create table B  -> statePublic tableInfo B:(a char(1))
+ * A add column c  -> statePublic tableInfo A:(a int, b int, c char(10))
+ * A drop column a -> statePublic tableInfo A:(b int, c char(10))
+ * drop table B    -> stateNone tableInfo B:(a char(1))
+ *
+ * Every ddl job will record the final state and tableInfo after executed.
+ */
+func (d *DDLHandle) AccelerateHistoryDDLs(job *model.Job) error {
+	switch job.Type {
+	case model.ActionCreateSchema, model.ActionModifySchemaCharsetAndCollate, model.ActionDropSchema:
+		if job.BinlogInfo.DBInfo.State == model.StatePublic {
+			// Take if not exists into consideration, we will override there.
+			d.lastDBInfoMap[quoteDB(job.BinlogInfo.DBInfo.Name.L)] = job.BinlogInfo.DBInfo
+		}
+		if job.BinlogInfo.DBInfo.State == model.StateNone {
+			delete(d.lastDBInfoMap, quoteDB(job.BinlogInfo.DBInfo.Name.L))
+		}
+		return nil
+	case model.ActionCreateTable, model.ActionCreateView, model.ActionDropTable, model.ActionDropView,
+		model.ActionDropTablePartition, model.ActionTruncateTablePartition, model.ActionAddColumn,
+		model.ActionDropColumn, model.ActionModifyColumn, model.ActionSetDefaultValue, model.ActionAddIndex,
+		model.ActionDropIndex, model.ActionRenameIndex, model.ActionAddForeignKey, model.ActionDropForeignKey,
+		model.ActionTruncateTable, model.ActionRebaseAutoID, model.ActionRenameTable, model.ActionShardRowID,
+		model.ActionModifyTableComment, model.ActionAddTablePartition, model.ActionModifyTableCharsetAndCollate,
+		model.ActionRecoverTable:
+		if job.BinlogInfo.TableInfo.State == model.StatePublic {
+			v, ok := d.lastDBInfoMap[quoteDB(strings.ToLower(job.SchemaName))]
+			if !ok {
+				return errors.New(fmt.Sprintf("database %s haven't exist in ddl history before use it", job.SchemaName))
+			}
+			// substitute the latest tableInfo for the old one in lastDBInfoMap.
+			newTableInfo := job.BinlogInfo.TableInfo
+			for i, t := range v.Tables {
+				if t.ID == newTableInfo.ID {
+					v.Tables[i] = newTableInfo
+					return nil
+				}
+			}
+			// the tableInfo maybe just created, add it in lastDBInfoMap.
+			v.Tables = append(v.Tables, newTableInfo)
+		} else if job.BinlogInfo.TableInfo.State == model.StateNone {
+			// stateNone means the table has been dropped, remove it in lastDBInfoMap.
+			v, ok := d.lastDBInfoMap[quoteDB(strings.ToLower(job.SchemaName))]
+			if !ok {
+				return errors.New(fmt.Sprintf("database %s haven't exist in ddl history before use it", job.SchemaName))
+			}
+			stateNoneTableInfo := job.BinlogInfo.TableInfo
+			for i, t := range v.Tables {
+				if t.ID == stateNoneTableInfo.ID {
+					v.Tables = append(v.Tables[:i], v.Tables[i+1:]...)
+					return nil
+				}
+			}
+			log.Warn("table haven't exist in ddl history before drop it", zap.String("table", stateNoneTableInfo.Name.L))
+		} else {
+			return errors.New(fmt.Sprintf("unknown table state %s", job.BinlogInfo.TableInfo.State.String()))
+		}
+	default:
+		return errors.New(fmt.Sprintf("unknown ddl action type %s", job.Type.String()))
+	}
 	return nil
 }
 
@@ -120,6 +199,7 @@ func (d *DDLHandle) ExecuteDDL(schema string, ddl string) error {
 	}
 
 	if _, err := d.db.Exec(ddl); err != nil {
+		fmt.Println(err)
 		if strings.Contains(err.Error(), "Unknown database") {
 			err := d.ExecuteDDL(schema, fmt.Sprintf("create database if not exists `%s`", schema))
 			if err != nil {
@@ -131,7 +211,7 @@ func (d *DDLHandle) ExecuteDDL(schema string, ddl string) error {
 			if len(schema) != 0 {
 				return d.ExecuteDDL(schema, fmt.Sprintf("use %s; %s", schema, ddl))
 			}
-		} else if strings.Contains(err.Error(), "already exists") {
+		} else if strings.Contains(err.Error(), "already exists") || strings.Contains(err.Error(), "database exists") {
 			return nil
 		}
 
@@ -480,4 +560,19 @@ func (d *DDLHandle) insertMapKeyFromDB(newKey, oldKey string) error {
 // At state *done*, it will be always and only changed to *synced*.
 func skipJob(job *model.Job) bool {
 	return !job.IsSynced() && !job.IsDone()
+}
+
+func (d *DDLHandle) ShiftMetaToTiDB() error {
+	var DBInfos []*model.DBInfo
+	for _, v := range d.lastDBInfoMap {
+		DBInfos = append(DBInfos, v)
+	}
+	return d.tidbServer.SetDBInfoMetaAndReload(DBInfos)
+}
+
+func (d *DDLHandle) SetServerHistoryAccelerate(server *tidblite.TiDBServer, jobs []*model.Job, m map[string]*model.DBInfo, ac bool) {
+	d.tidbServer = server
+	d.historyDDLs = jobs
+	d.lastDBInfoMap = m
+	d.accelerateEnable = ac
 }

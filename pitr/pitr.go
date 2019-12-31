@@ -2,16 +2,12 @@ package pitr
 
 import (
 	"fmt"
-	"io/ioutil"
 	"sort"
-	"strings"
 
 	"github.com/pingcap/errors"
 	"github.com/pingcap/log"
 	"github.com/pingcap/parser/model"
-	"github.com/pingcap/tidb-binlog/pkg/filter"
 	"github.com/pingcap/tidb-binlog/pkg/flags"
-	pb "github.com/pingcap/tidb-binlog/proto/binlog"
 	"github.com/pingcap/tidb/kv"
 	"github.com/pingcap/tidb/meta"
 	"github.com/pingcap/tidb/store"
@@ -19,22 +15,32 @@ import (
 	"go.uber.org/zap"
 )
 
+// historyDDLHandler handles the DDL works we need to do before compressing to
+// binlog file, it'll prepare the schema at StartTSO.
+type historyDDLHandler struct {
+	ddlJobs []*model.Job
+}
+
+func (h *historyDDLHandler) execute() (err error) {
+	if err := ddlHandle.ExecuteHistoryDDLs(h.ddlJobs); err != nil {
+		return err
+	}
+	if ddlHandle.accelerateEnable {
+		return ddlHandle.ShiftMetaToTiDB()
+	}
+	return nil
+}
+
 // PITR is the main part of the merge binlog tool.
 type PITR struct {
 	cfg *Config
-
-	filter *filter.Filter
 }
 
 // New creates a PITR object.
 func New(cfg *Config) (*PITR, error) {
 	log.Info("New PITR", zap.Stringer("config", cfg))
-
-	filter := filter.NewFilter(cfg.IgnoreDBs, cfg.IgnoreTables, cfg.DoDBs, cfg.DoTables)
-
 	return &PITR{
-		cfg:    cfg,
-		filter: filter,
+		cfg: cfg,
 	}, nil
 }
 
@@ -42,47 +48,51 @@ func New(cfg *Config) (*PITR, error) {
 func (r *PITR) Process() error {
 	files, err := searchFiles(r.cfg.Dir)
 	if err != nil {
-		return errors.Annotate(err, "searchFiles failed")
+		return errors.Annotate(err, fmt.Sprintf("search files in directory %s failed", r.cfg.Dir))
+	}
+	if len(files) == 0 {
+		return errors.Annotate(err, fmt.Sprintf("no file is searched in directory %s", r.cfg))
 	}
 
 	files, fileSize, err := filterFiles(files, r.cfg.StartTSO, r.cfg.StopTSO)
 	if err != nil {
 		return errors.Annotate(err, "filterFiles failed")
 	}
+	if len(files) == 0 {
+		return errors.Annotate(err, fmt.Sprintf("no files remained between the time interval [%d, %d]", r.cfg.StartTSO, r.cfg.StopTSO))
+	}
 
-	firstBinlogTs := r.cfg.StartTSO
-	if firstBinlogTs == 0 {
-		firstBinlogTs, _, err = getFirstBinlogCommitTSAndFileSize(files[0])
+	startTSO := r.cfg.StartTSO
+	if startTSO == 0 {
+		startTSO, _, err = getFirstBinlogCommitTSAndFileSize(files[0])
 		if err != nil {
 			return errors.Annotate(err, "get first binlog commit ts failed")
 		}
 	}
 
+	historyDDLs, err := r.fetchDDLBeforeStartTSO(startTSO)
+	if err != nil {
+		return errors.Trace(err)
+	}
 	merge, err := NewMerge(files, fileSize, r.cfg.OutputDir)
 	if err != nil {
 		return errors.Trace(err)
 	}
 	defer merge.Close(r.cfg.reserveTempDir)
-
-	err = r.ExecuteHistoryDDLs(firstBinlogTs)
-	if err != nil {
-		return errors.Annotate(err, "load history ddls")
+	if err = historyDDLs.execute(); err != nil {
+		return err
 	}
-
-	if err := merge.Map(); err != nil {
+	if noEventIsFound, err := merge.Map(startTSO, r.cfg.StopTSO); err != nil {
+		return errors.Trace(err)
+	} else if noEventIsFound {
+		log.Info(fmt.Sprintf("no event is found between [%d, %d]", startTSO, r.cfg.StopTSO))
+		return nil
+	}
+	if err = historyDDLs.execute(); err != nil {
 		return errors.Trace(err)
 	}
 
-	err = r.ExecuteHistoryDDLs(firstBinlogTs)
-	if err != nil {
-		return errors.Annotate(err, "load history ddls")
-	}
-
-	if err := merge.Reduce(); err != nil {
-		return errors.Trace(err)
-	}
-
-	return nil
+	return merge.Reduce()
 }
 
 // Close closes the PITR object.
@@ -90,52 +100,7 @@ func (r *PITR) Close() error {
 	return nil
 }
 
-func (r *PITR) LoadBaseSchema() ([]string, error) {
-	content, err := ioutil.ReadFile(r.cfg.schemaFile)
-	if err != nil {
-		return nil, err
-	}
-
-	ddls := strings.Split(string(content), "\n")
-	return ddls, nil
-}
-
-func (r *PITR) ExecuteHistoryDDLs(beginTS int64) error {
-	if len(r.cfg.schemaFile) != 0 {
-		ddls, err := r.LoadBaseSchema()
-		if err != nil {
-			return err
-		}
-		for _, ddl := range ddls {
-			err := ddlHandle.ExecuteDDL("", ddl)
-			if err != nil {
-				return err
-			}
-		}
-	} else {
-		historyDDLs, err := r.loadHistoryDDLJobs(beginTS)
-		if err != nil {
-			return errors.Annotate(err, "load history ddls")
-		}
-		err = ddlHandle.ExecuteHistoryDDLs(historyDDLs)
-		if err != nil {
-			return errors.Trace(err)
-		}
-	}
-
-	return nil
-}
-
-func isAcceptableBinlog(binlog *pb.Binlog, startTs, endTs int64) bool {
-	return binlog.CommitTs >= startTs && (endTs == 0 || binlog.CommitTs <= endTs)
-}
-
 func (r *PITR) loadHistoryDDLJobs(beginTS int64) ([]*model.Job, error) {
-	// if PDURLs is empty, don't get history ddls
-	if len(r.cfg.PDURLs) == 0 {
-		return nil, nil
-	}
-
 	tiStore, err := createTiStore(r.cfg.PDURLs)
 	if err != nil {
 		return nil, errors.Trace(err)
@@ -145,7 +110,7 @@ func (r *PITR) loadHistoryDDLJobs(beginTS int64) ([]*model.Job, error) {
 		store.UnRegister("tikv")
 	}()
 
-	snapMeta, err := getSnapshotMeta(tiStore)
+	snapMeta, err := GetSnapshotMeta(tiStore)
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
@@ -190,7 +155,7 @@ func createTiStore(urls string) (kv.Storage, error) {
 	return tiStore, nil
 }
 
-func getSnapshotMeta(tiStore kv.Storage) (*meta.Meta, error) {
+func GetSnapshotMeta(tiStore kv.Storage) (*meta.Meta, error) {
 	version, err := tiStore.CurrentVersion()
 	if err != nil {
 		return nil, errors.Trace(err)
@@ -200,4 +165,13 @@ func getSnapshotMeta(tiStore kv.Storage) (*meta.Meta, error) {
 		return nil, errors.Trace(err)
 	}
 	return meta.NewSnapshotMeta(snapshot), nil
+}
+
+func (r *PITR) fetchDDLBeforeStartTSO(startTSO int64) (historyDDLs historyDDLHandler, err error) {
+	switch {
+	case len(r.cfg.PDURLs) != 0:
+		historyDDLs.ddlJobs, err = r.loadHistoryDDLJobs(startTSO)
+		err = errors.Annotate(err, "load history ddls")
+	}
+	return historyDDLs, errors.Trace(err)
 }

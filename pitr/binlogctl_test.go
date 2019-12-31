@@ -165,6 +165,9 @@ func TestMyBinlogger(t *testing.T) {
 	b.WriteTail(&tb.Entity{Payload: data})
 
 	b.Close()
+	b, err = OpenMyBinlogger(dst_path)
+	assert.Assert(t, err == nil)
+	b.Close()
 
 	src_files, err := searchFiles(src_path)
 	assert.Assert(t, err == nil)

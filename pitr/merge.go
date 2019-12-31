@@ -27,7 +27,7 @@ const (
 )
 
 var (
-	defaultTempDir string = "./temp"
+	defaultTempDir = "./temp"
 
 	// used for handle ddl, and update table info
 	ddlHandle *DDLHandle
@@ -38,7 +38,6 @@ type Merge struct {
 	// tempDir used to save splited binlog file
 	tempDir string
 
-	// outputDir used to save merged binlog file
 	outputDir string
 
 	// which binlog file need merge
@@ -77,14 +76,14 @@ func NewMerge(binlogFiles []string, allFileSize int64, outputDut string) (*Merge
 }
 
 // Map split binlog into multiple files
-func (m *Merge) Map() error {
+func (m *Merge) Map(beginTs, endTs int64) (noEventIsFound bool, _ error) {
 	fileMap := make(map[string]*PBFile)
 	log.Info("map", zap.Strings("files", m.binlogFiles))
-
+	noEventIsFound = true
 	for _, bFile := range m.binlogFiles {
 		f, err := os.OpenFile(bFile, os.O_RDONLY, 0600)
 		if err != nil {
-			return errors.Annotatef(err, "open file %s error", bFile)
+			return true, errors.Annotatef(err, "open file %s error", bFile)
 		}
 		reader := bufio.NewReader(f)
 		for {
@@ -95,16 +94,19 @@ func (m *Merge) Map() error {
 				if errors.Cause(err) == io.EOF {
 					break
 				} else {
-					return err
+					return true, err
 				}
 			}
-
+			if commitTs := binlog.CommitTs; commitTs < beginTs || commitTs > endTs {
+				continue
+			}
+			noEventIsFound = false
 			switch binlog.Tp {
 
 			case pb.BinlogType_DML:
 				dml := binlog.DmlData
 				if dml == nil {
-					return errors.New("dml binlog's data can't be empty")
+					return true, errors.New("dml binlog's data can't be empty")
 				}
 				for _, event := range dml.Events {
 					schema = event.GetSchemaName()
@@ -113,7 +115,7 @@ func (m *Merge) Map() error {
 					if fileMap[key] == nil {
 						pf, err = NewPbFile(m.tempDir, schema, table, m.splitNum)
 						if err != nil {
-							return errors.Trace(err)
+							return true, errors.Trace(err)
 						}
 						fileMap[key] = pf
 					} else {
@@ -122,13 +124,13 @@ func (m *Merge) Map() error {
 					var evs []*pb.Event
 					evs, err = rewriteDML(&event)
 					if err != nil {
-						return err
+						return true, err
 					}
 					for _, v := range evs {
 						var hk string
 						hk, err = getHashKey(schema, table, v)
 						if err != nil {
-							return err
+							return true, err
 						}
 						pf.AddDMLEvent(event, binlog.CommitTs, hk)
 					}
@@ -136,16 +138,16 @@ func (m *Merge) Map() error {
 			case pb.BinlogType_DDL:
 				schema, table, err = parserSchemaTableFromDDL(string(binlog.DdlQuery))
 				if err != nil {
-					return errors.Trace(err)
+					return true, errors.Trace(err)
 				}
 				if len(schema) == 0 {
-					return errors.New("DDL has no schema info.")
+					return true, errors.New("DDL has no schema info.")
 				}
 				key = fmt.Sprintf("%s_%s", schema, table)
 				if fileMap[key] == nil {
 					pf, err = NewPbFile(m.tempDir, schema, table, m.splitNum)
 					if err != nil {
-						return errors.Trace(err)
+						return true, errors.Trace(err)
 					}
 					fileMap[key] = pf
 				} else {
@@ -154,11 +156,11 @@ func (m *Merge) Map() error {
 				var rebin *pb.Binlog
 				rebin, err = rewriteDDL(binlog)
 				if err != nil {
-					return err
+					return true, err
 				}
 				err = ddlHandle.ExecuteDDL("", string(binlog.GetDdlQuery()))
 				if err != nil {
-					return err
+					return true, err
 				}
 				pf.AddDDLEvent(rebin)
 			default:
@@ -173,14 +175,14 @@ func (m *Merge) Map() error {
 	}
 
 	ddlHandle.ResetDB()
-	return nil
+	return noEventIsFound, nil
 }
 
 // Reduce merge same keys binlog into one, and output to file
 // every file only contain one table's binlog, just like:
 // - output
 //   - schema1_table1
-//   _ schema1_table2
+//   - schema1_table2
 //   - schema2_table1
 //   - schema2_table2
 func (m *Merge) Reduce() error {
@@ -230,8 +232,7 @@ func (m *Merge) Close(reserve bool) {
 }
 
 type TableMerge struct {
-	inputDir  string
-	outputDir string
+	inputDir string
 
 	keyEvent map[string]*Event
 
@@ -248,7 +249,6 @@ func NewTableMerge(inputDir, outputDir string) (*TableMerge, error) {
 
 	return &TableMerge{
 		inputDir:  inputDir,
-		outputDir: outputDir,
 		keyEvent:  make(map[string]*Event),
 		binlogger: binlogger,
 	}, nil

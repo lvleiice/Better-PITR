@@ -3,6 +3,7 @@ package pitr
 import (
 	"fmt"
 	"github.com/pingcap/parser/mysql"
+	"math"
 	"os"
 	//"strings"
 	"testing"
@@ -60,7 +61,7 @@ func TestMapFunc1(t *testing.T) {
 	merge, err := NewMerge(files, fileSize, defaultOutputDir)
 	assert.Assert(t, err == nil)
 
-	err = merge.Map()
+	_, err = merge.Map(0, math.MaxInt64)
 	assert.Assert(t, err == nil)
 
 	tb1, err := searchFiles(merge.tempDir + "/" + "test_tb1")
